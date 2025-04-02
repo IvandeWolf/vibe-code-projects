@@ -201,7 +201,10 @@
             
             <div>
                 <label for="start-location">Starting Location:</label>
-                <input type="text" id="start-location" placeholder="Enter address or place name">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="start-location" placeholder="Enter address or place name" style="margin-bottom: 0; flex-grow: 1;">
+                    <button id="update-location" style="width: auto; margin-bottom: 0; padding: 10px 15px; white-space: nowrap;">Update Location</button>
+                </div>
             </div>
             
             <div>
@@ -252,15 +255,47 @@
             // Add event listeners
             document.getElementById('generate-route').addEventListener('click', generateRoute);
             document.getElementById('clear-route').addEventListener('click', clearRoute);
+            document.getElementById('update-location').addEventListener('click', updateLocation);
             
             // Prevent form submission when pressing Enter
             document.getElementById('start-location').addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    geocodeLocation();
+                    updateLocation();
                 }
             });
         });
+        
+        // Update the location based on the input field
+        function updateLocation() {
+            const location = document.getElementById('start-location').value;
+            
+            if (!location || location.trim() === '') {
+                showError("Please enter a starting location");
+                return;
+            }
+            
+            hideError();
+            showLoading();
+            
+            // Geocode the entered location and update the map
+            geocoder.geocode(location, results => {
+                hideLoading();
+                
+                if (!results || results.length === 0) {
+                    showError("Could not find the location. Please try a different address.");
+                    return;
+                }
+                
+                const result = results[0];
+                
+                // Set the marker at the found location
+                setStartMarker(result.center);
+                
+                // Center the map on the location
+                map.setView(result.center, 14);
+            });
+        }
         
         // Initialize Leaflet map
         function initMap() {
@@ -336,13 +371,27 @@
             // Update address when marker is dragged
             startMarker.on('dragend', function(e) {
                 const newPos = e.target.getLatLng();
-                reverseGeocode([newPos.lat, newPos.lng]);
+                reverseGeocode(newPos);
             });
         }
         
         // Reverse geocode - convert coordinates to address
         function reverseGeocode(latlng) {
-            geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), results => {
+            // Make sure latlng is properly formatted
+            // It can be an array [lat, lng] or a LatLng object
+            const latValue = Array.isArray(latlng) ? latlng[0] : latlng.lat;
+            const lngValue = Array.isArray(latlng) ? latlng[1] : latlng.lng;
+            
+            // Handle cases where lat/lng might be methods in some objects
+            const lat = typeof latValue === 'function' ? latValue() : latValue;
+            const lng = typeof lngValue === 'function' ? lngValue() : lngValue;
+            
+            if (lat === undefined || lng === undefined) {
+                console.error('Invalid coordinates for reverse geocoding');
+                return;
+            }
+            
+            geocoder.reverse({lat: lat, lng: lng}, map.options.crs.scale(map.getZoom()), results => {
                 if (results && results.length > 0) {
                     document.getElementById('start-location').value = results[0].name;
                 }
