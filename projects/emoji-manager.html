@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Manager</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-dark: #45a049;
+            --secondary-color: #333;
+            --background-color: #f5f5f5;
+            --card-background: white;
+            --text-color: #333;
+            --border-color: #ddd;
+            --hover-color: #f0f0f0;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--background-color);
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: var(--text-color);
+        }
+        
+        h1, h2, h3 {
+            color: var(--secondary-color);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .panel {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        
+        .file-drop {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        
+        .file-drop:hover, .file-drop.dragover {
+            border-color: var(--primary-color);
+            background-color: rgba(76, 175, 80, 0.05);
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        button, .btn {
+            padding: 10px 15px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover, .btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        button:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            font-style: italic;
+        }
+        
+        .key-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .key-item {
+            display: flex;
+            align-items: center;
+            background-color: var(--hover-color);
+            border-radius: 4px;
+            padding: 5px 10px;
+        }
+        
+        .key-item label {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background-color: white;
+        }
+        
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .emoji-item {
+            position: relative;
+            height: 60px;
+            background-color: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            user-select: none; /* Prevent text selection */
+        }
+        
+        .emoji-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            z-index: 50; /* Add z-index on hover to ensure tooltip visibility */
+        }
+        
+        .emoji-item:hover .emoji-tooltip {
+            opacity: 1;
+            visibility: visible; /* Ensure tooltip is visible on hover */
+        }
+        
+        .emoji-item.has-skins::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+        }
+        
+        .emoji-item.excluded {
+            opacity: 0.5;
+            background-color: #f0f0f0;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .emoji-item.excluded:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+        }
+        
+        .emoji-tooltip {
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100; /* Increased z-index to ensure it appears on top */
+            width: max-content;
+            max-width: 300px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden; /* Add visibility property for better hover handling */
+            transition: opacity 0.2s, visibility 0.2s;
+            text-align: left;
+        }
+        
+        .skin-variants {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .language-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .lang-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .api-key-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .api-key-input input {
+            flex: 1;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-color: var(--primary-color);
+            font-weight: bold;
+        }
+        
+        .tab:hover:not(.active) {
+            border-color: var(--hover-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-title {
+            margin-top: 0;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .progress {
+            width: 100%;
+            background-color: var(--border-color);
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .version-filter {
+            margin-top: 15px;
+        }
+        
+        .version-filter select {
+            margin-left: 10px;
+        }
+        
+        .selection-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Emoji Manager</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <div class="tabs">
+                <div class="tab active" data-tab="upload">Upload & Configure</div>
+                <div class="tab" data-tab="view">View Emojis</div>
+                <div class="tab" data-tab="language">Language Settings</div>
+            </div>
+            
+            <div class="tab-content active" id="upload-tab">
+                <h2>Upload Emoji JSON File</h2>
+                <div class="file-drop" id="file-drop">
+                    <p>Drag & drop your emoji JSON file here, or click to select a file</p>
+                    <input type="file" id="file-input" class="hidden" accept=".json">
+                </div>
+                
+                <div id="file-info" class="file-info hidden">
+                    <p>No file selected</p>
+                </div>
+                
+                <div id="keys-container" class="hidden">
+                    <h3>Available Keys</h3>
+                    <p>Select the keys you want to include in the exported file:</p>
+                    <div id="key-list" class="key-list"></div>
+                    
+                    <h3>Skin Variants</h3>
+                    <p>Include skin variants in export:</p>
+                    <div class="key-item">
+                        <input type="checkbox" id="include-skins" checked>
+                        <label for="include-skins">Include skin variants</label>
+                    </div>
+                    
+                    <div class="version-filter">
+                        <label for="max-version">Maximum Emoji Version:</label>
+                        <select id="max-version">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                        <p class="info">Exclude emoji versions newer than selected version</p>
+                    </div>
+                    
+                    <div class="key-item">
+                        <input type="checkbox" id="minify-output" checked>
+                        <label for="minify-output">Minify JSON output (smaller file size)</label>
+                    </div>
+                    
+                    <div id="export-info" class="file-info">
+                        <p>No emojis selected for export</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="export-btn" disabled>Export Filtered JSON</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="view-tab">
+                <h2>Emoji Viewer</h2>
+                <p>Click on emojis to exclude them from export. Click again to include them.</p>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="sort-by">Sort by:</label>
+                        <select id="sort-by">
+                            <option value="order">Order</option>
+                            <option value="type">Type</option>
+                            <option value="subgroup">Subgroup</option>
+                            <option value="version">Version</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="group-by">Group by:</label>
+                        <select id="group-by">
+                            <option value="none">None</option>
+                            <option value="type">Type</option>
+                            <option value="subgroup">Subgroup</option>
+                            <option value="version">Version</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="language-select">Language:</label>
+                        <select id="language-select">
+                            <option value="nl">Dutch</option>
+                            <!-- More languages will be added dynamically -->
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="emoji-container">
+                    <p>Upload a JSON file to view emojis</p>
+                </div>
+                
+                <div class="selection-controls" id="selection-controls">
+                    <button id="exclude-all-btn">Exclude All</button>
+                    <button id="include-all-btn">Include All</button>
+                    <button id="export-btn-view">Export Filtered JSON</button>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="language-tab">
+                <h2>Language Settings</h2>
+                <div class="language-panel">
+                    <p>Current languages:</p>
+                    <ul id="language-list">
+                        <li>Dutch (Original)</li>
+                    </ul>
+                    
+                    <div class="lang-controls">
+                        <label for="new-language">Add new language:</label>
+                        <input type="text" id="new-language" placeholder="Language name (e.g. English)">
+                        <input type="text" id="language-code" placeholder="Language code (e.g. en)">
+                        <button id="add-language-btn">Add Manually</button>
+                    </div>
+                    
+                    <div class="api-key-input">
+                        <input type="password" id="openai-key" placeholder="Enter your OpenAI API key">
+                        <button id="translate-btn" disabled>Translate with OpenAI</button>
+                    </div>
+                    
+                    <div class="model-selection" style="margin-top: 15px;">
+                        <label for="gpt-model">Select GPT Model:</label>
+                        <select id="gpt-model">
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-4o-mini-2024-07-18">GPT-4o Mini (July 2024)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for translation progress -->
+    <div class="modal" id="translation-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Translating Emoji Data</h3>
+            <p id="translation-status">Starting translation process...</p>
+            <div class="progress">
+                <div class="progress-bar" id="translation-progress"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-translation-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main application state
+        const appState = {
+            emojiData: null,
+            uniqueKeys: [],
+            selectedKeys: [],
+            includeSkins: true,
+            languages: {
+                nl: { name: 'Dutch', isOriginal: true }
+            },
+            currentLanguage: 'nl',
+            sortBy: 'order',
+            groupBy: 'none',
+            openaiKey: null,
+            translationInProgress: false,
+            excludedEmojis: [], // Changed from selectedEmojis to excludedEmojis
+            maxVersion: null,
+            availableVersions: [],
+            lastSelectedIndex: -1,
+            minifyOutput: true // Default to minified output
+        };
+        
+        // DOM elements
+        const elements = {
+            fileDrop: document.getElementById('file-drop'),
+            fileInput: document.getElementById('file-input'),
+            fileInfo: document.getElementById('file-info'),
+            keysContainer: document.getElementById('keys-container'),
+            keyList: document.getElementById('key-list'),
+            exportBtn: document.getElementById('export-btn'),
+            includeSkins: document.getElementById('include-skins'),
+            emojiContainer: document.getElementById('emoji-container'),
+            sortBy: document.getElementById('sort-by'),
+            groupBy: document.getElementById('group-by'),
+            languageSelect: document.getElementById('language-select'),
+            languageList: document.getElementById('language-list'),
+            newLanguage: document.getElementById('new-language'),
+            languageCode: document.getElementById('language-code'),
+            addLanguageBtn: document.getElementById('add-language-btn'),
+            openaiKey: document.getElementById('openai-key'),
+            translateBtn: document.getElementById('translate-btn'),
+            tabs: document.querySelectorAll('.tab'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            translationModal: document.getElementById('translation-modal'),
+            translationStatus: document.getElementById('translation-status'),
+            translationProgress: document.getElementById('translation-progress'),
+            cancelTranslationBtn: document.getElementById('cancel-translation-btn'),
+            maxVersion: document.getElementById('max-version'),
+            selectionControls: document.getElementById('selection-controls'),
+            excludeAllBtn: document.getElementById('exclude-all-btn'),
+            includeAllBtn: document.getElementById('include-all-btn'),
+            exportBtnView: document.getElementById('export-btn-view'),
+            minifyOutput: document.getElementById('minify-output'),
+            exportInfo: document.getElementById('export-info'),
+            gptModel: document.getElementById('gpt-model')
+        };
+        
+        // Tab functionality
+        elements.tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Update active tab
+                elements.tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update active content
+                elements.tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                // Update export info when switching to upload tab
+                if (tabName === 'upload') {
+                    updateExportInfo();
+                }
+            });
+        });
+        
+        // File drop functionality
+        elements.fileDrop.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            elements.fileDrop.classList.add('dragover');
+        });
+        
+        elements.fileDrop.addEventListener('dragleave', () => {
+            elements.fileDrop.classList.remove('dragover');
+        });
+        
+        elements.fileDrop.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.fileDrop.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+        
+        elements.fileDrop.addEventListener('click', () => {
+            elements.fileInput.click();
+        });
+        
+        elements.fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+        
+        // Handle file upload
+        function handleFileUpload(file) {
+            if (file.type !== 'application/json') {
+                alert('Please upload a JSON file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (!Array.isArray(data)) {
+                        throw new Error('Uploaded JSON must be an array of emoji objects');
+                    }
+                    
+                    if (data.length === 0) {
+                        throw new Error('Uploaded JSON array is empty');
+                    }
+                    
+                    // Set the emoji data
+                    appState.emojiData = data;
+                    
+                    // Reset excluded emojis
+                    appState.excludedEmojis = [];
+                    
+                    // Extract unique keys
+                    extractUniqueKeys(data);
+                    
+                    // Extract version information and populate dropdown
+                    extractVersionInfo();
+                    
+                    // Update UI with file info
+                    elements.fileInfo.innerHTML = `<p>File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)</p>
+                                                <p>Number of emojis: ${data.length}</p>`;
+                    elements.fileInfo.classList.remove('hidden');
+                    elements.keysContainer.classList.remove('hidden');
+                    elements.exportBtn.disabled = false;
+                    
+                    // Update emoji viewer
+                    renderEmojiGrid();
+                    
+                    // Update export info
+                    updateExportInfo();
+                    
+                    // Automatically switch to view tab
+                    elements.tabs[1].click();
+                } catch (error) {
+                    alert(`Error processing JSON file: ${error.message}`);
+                    console.error(error);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        // Extract unique keys from emoji data
+        function extractUniqueKeys(data) {
+            const keySet = new Set();
+            
+            // Add all keys from all emojis to the set
+            data.forEach(emoji => {
+                Object.keys(emoji).forEach(key => keySet.add(key));
+            });
+            
+            // Convert to array and sort alphabetically
+            appState.uniqueKeys = Array.from(keySet).sort();
+            
+            // Set all keys as selected by default
+            appState.selectedKeys = [...appState.uniqueKeys];
+            
+            // Render key list
+            renderKeyList();
+        }
+        
+        // Extract version information and populate dropdown
+        function extractVersionInfo() {
+            if (!appState.emojiData || appState.emojiData.length === 0) return;
+            
+            // Extract all versions
+            const versions = new Set();
+            appState.emojiData.forEach(emoji => {
+                if (emoji.version) {
+                    versions.add(emoji.version);
+                }
+            });
+            
+            // Convert to array and sort
+            appState.availableVersions = Array.from(versions)
+                .map(v => parseFloat(v))
+                .filter(v => !isNaN(v))
+                .sort((a, b) => a - b);
+            
+            // Populate the dropdown
+            elements.maxVersion.innerHTML = '<option value="">All Versions</option>';
+            
+            appState.availableVersions.forEach(version => {
+                const option = document.createElement('option');
+                option.value = version;
+                option.textContent = `Version ${version}`;
+                elements.maxVersion.appendChild(option);
+            });
+            
+            // Set the highest version as default
+            if (appState.availableVersions.length > 0) {
+                const highestVersion = Math.max(...appState.availableVersions);
+                appState.maxVersion = highestVersion;
+                elements.maxVersion.value = highestVersion;
+            }
+        }
+        
+        // Handle emoji selection (now for exclusion)
+        function handleEmojiSelection(index, shouldMultiSelect) {
+            // Get all emoji elements
+            const emojiElements = document.querySelectorAll('.emoji-item');
+            
+            if (shouldMultiSelect && appState.lastSelectedIndex !== -1) {
+                // Shift-click for range selection
+                const start = Math.min(appState.lastSelectedIndex, index);
+                const end = Math.max(appState.lastSelectedIndex, index);
+                
+                for (let i = start; i <= end; i++) {
+                    const elementIndex = Array.from(emojiElements).findIndex(el => 
+                        parseInt(el.getAttribute('data-index')) === i);
+                    if (elementIndex !== -1) {
+                        toggleEmojiExclusion(i, emojiElements[elementIndex]);
+                    }
+                }
+            } else {
+                // Single click exclusion
+                const elementIndex = Array.from(emojiElements).findIndex(el => 
+                    parseInt(el.getAttribute('data-index')) === index);
+                if (elementIndex !== -1) {
+                    toggleEmojiExclusion(index, emojiElements[elementIndex]);
+                }
+            }
+            
+            // Update last selected index
+            appState.lastSelectedIndex = index;
+            
+            // Update export info
+            updateExportInfo();
+        }
+        
+        // Toggle exclusion state of an emoji
+        function toggleEmojiExclusion(index, element) {
+            if (!element) return;
+            
+            const isExcluded = appState.excludedEmojis.includes(index);
+            
+            if (isExcluded) {
+                // Remove from exclusion list
+                appState.excludedEmojis = appState.excludedEmojis.filter(i => i !== index);
+                element.classList.remove('excluded');
+            } else {
+                // Add to exclusion list
+                appState.excludedEmojis.push(index);
+                element.classList.add('excluded');
+            }
+        }
+        
+        // Update export info display
+        function updateExportInfo() {
+            if (!appState.emojiData) return;
+            
+            let totalEmojis = appState.emojiData.length;
+            let excludedCount = appState.excludedEmojis.length;
+            let versionExcludedCount = 0;
+            
+            // Count emojis excluded by version
+            if (appState.maxVersion) {
+                appState.emojiData.forEach((emoji, index) => {
+                    if (emoji.version && !appState.excludedEmojis.includes(index)) {
+                        const emojiVersion = parseFloat(emoji.version);
+                        if (!isNaN(emojiVersion) && emojiVersion > appState.maxVersion) {
+                            versionExcludedCount++;
+                        }
+                    }
+                });
+            }
+            
+            const includedCount = totalEmojis - excludedCount - versionExcludedCount;
+            
+            elements.exportInfo.innerHTML = `
+                <p>Export information:</p>
+                <ul>
+                    <li>Total emojis: ${totalEmojis}</li>
+                    <li>Manually excluded: ${excludedCount}</li>
+                    ${versionExcludedCount > 0 ? `<li>Excluded by version (> ${appState.maxVersion}): ${versionExcludedCount}</li>` : ''}
+                    <li><strong>Will be exported: ${includedCount}</strong></li>
+                </ul>
+            `;
+        }
+        
+        // Exclude all emojis
+        function excludeAllEmojis() {
+            if (!appState.emojiData) return;
+            
+            const emojiElements = document.querySelectorAll('.emoji-item');
+            
+            // Add all emojis to exclusion list
+            appState.excludedEmojis = Array.from({length: appState.emojiData.length}, (_, i) => i);
+            
+            // Update UI
+            emojiElements.forEach(element => {
+                element.classList.add('excluded');
+            });
+            
+            updateExportInfo();
+        }
+        
+        // Include all emojis (clear exclusions)
+        function includeAllEmojis() {
+            const emojiElements = document.querySelectorAll('.emoji-item');
+            
+            appState.excludedEmojis = [];
+            
+            emojiElements.forEach(element => {
+                element.classList.remove('excluded');
+            });
+            
+            updateExportInfo();
+        }
+        
+        // Export filtered JSON with version filtering and exclusions
+        function exportFilteredJSON() {
+            if (!appState.emojiData) return;
+            
+            // Create a filtered copy of the data
+            const filteredData = appState.emojiData
+                .filter((emoji, index) => {
+                    // Skip manually excluded emojis
+                    if (appState.excludedEmojis.includes(index)) {
+                        return false;
+                    }
+                    
+                    // Apply version filtering if selected
+                    if (appState.maxVersion && emoji.version) {
+                        const emojiVersion = parseFloat(emoji.version);
+                        if (!isNaN(emojiVersion) && emojiVersion > appState.maxVersion) {
+                            return false; // Skip newer versions
+                        }
+                    }
+                    
+                    return true;
+                })
+                .map(emoji => {
+                    const filtered = {};
+                    
+                    // Add only selected keys
+                    appState.selectedKeys.forEach(key => {
+                        if (emoji[key] !== undefined) {
+                            filtered[key] = emoji[key];
+                        }
+                    });
+                    
+                    // Handle skins separately
+                    if (appState.includeSkins && emoji.skins) {
+                        filtered.skins = emoji.skins;
+                    }
+                    
+                    return filtered;
+                });
+            
+            // Create a download link with either minified or pretty JSON
+            const space = appState.minifyOutput ? null : 2;
+            const dataStr = JSON.stringify(filteredData, null, space);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            
+            const exportFileName = 'emoji-data.json';
+            
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileName);
+            linkElement.click();
+        }
+        
+        // Render the list of keys with checkboxes
+        function renderKeyList() {
+            elements.keyList.innerHTML = '';
+            
+            appState.uniqueKeys.forEach(key => {
+                const keyItem = document.createElement('div');
+                keyItem.className = 'key-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `key-${key}`;
+                checkbox.checked = appState.selectedKeys.includes(key);
+                
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        appState.selectedKeys.push(key);
+                    } else {
+                        appState.selectedKeys = appState.selectedKeys.filter(k => k !== key);
+                    }
+                    
+                    // Update export info when keys change
+                    updateExportInfo();
+                });
+                
+                const label = document.createElement('label');
+                label.htmlFor = `key-${key}`;
+                label.textContent = key;
+                
+                keyItem.appendChild(checkbox);
+                keyItem.appendChild(label);
+                elements.keyList.appendChild(keyItem);
+            });
+        }
+        
+        // Render emoji grid
+        function renderEmojiGrid() {
+            if (!appState.emojiData) {
+                elements.emojiContainer.innerHTML = '<p>Upload a JSON file to view emojis</p>';
+                return;
+            }
+            
+            const sortBy = elements.sortBy.value;
+            const groupBy = elements.groupBy.value;
+            const language = appState.currentLanguage;
+            
+            // Keep track of previously excluded emojis
+            const previouslyExcluded = [...appState.excludedEmojis];
+            
+            // Reset for fresh rendering
+            appState.lastSelectedIndex = -1;
+            
+            // Sort the data
+            let sortedData = [...appState.emojiData];
+            if (sortBy && sortBy !== 'none') {
+                sortedData.sort((a, b) => {
+                    if (a[sortBy] < b[sortBy]) return -1;
+                    if (a[sortBy] > b[sortBy]) return 1;
+                    return 0;
+                });
+            }
+            
+            // Create HTML elements
+            let html = '';
+            
+            if (groupBy && groupBy !== 'none') {
+                // Group the emojis
+                const groups = {};
+                
+                sortedData.forEach(emoji => {
+                    const groupValue = emoji[groupBy] || 'Unknown';
+                    if (!groups[groupValue]) {
+                        groups[groupValue] = [];
+                    }
+                    groups[groupValue].push(emoji);
+                });
+                
+                // Generate HTML for each group
+                Object.keys(groups).sort().forEach(groupName => {
+                    html += `<h3>${groupBy}: ${groupName}</h3>`;
+                    html += '<div class="emoji-grid">';
+                    
+                    groups[groupName].forEach((emoji) => {
+                        // Find the original index in the emojiData array
+                        const originalIndex = appState.emojiData.findIndex(e => e === emoji);
+                        html += createEmojiCard(emoji, language, originalIndex);
+                    });
+                    
+                    html += '</div>';
+                });
+            } else {
+                // No grouping, just show all emojis in a grid
+                html = '<div class="emoji-grid">';
+                sortedData.forEach((emoji) => {
+                    // Find the original index in the emojiData array
+                    const originalIndex = appState.emojiData.findIndex(e => e === emoji);
+                    html += createEmojiCard(emoji, language, originalIndex);
+                });
+                html += '</div>';
+            }
+            
+            elements.emojiContainer.innerHTML = html;
+            
+            // Add click handlers for emoji exclusion
+            document.querySelectorAll('.emoji-item').forEach(element => {
+                const dataIndex = parseInt(element.getAttribute('data-index'));
+                
+                // Apply excluded state if previously excluded
+                if (previouslyExcluded.includes(dataIndex)) {
+                    element.classList.add('excluded');
+                }
+                
+                element.addEventListener('click', (e) => {
+                    // Shift key for multi-selection
+                    handleEmojiSelection(dataIndex, e.shiftKey);
+                });
+            });
+            
+            // Make selection controls always visible when we have emoji data
+            elements.selectionControls.classList.remove('hidden');
+        }
+        
+        // Create HTML for a single emoji card
+        function createEmojiCard(emoji, language, index) {
+            const hasSkins = emoji.skins && emoji.skins.length > 0;
+            const currentLang = appState.languages[language] || appState.languages.nl;
+            
+            // Get label and tags in the current language
+            let label = emoji.label || '';
+            let tags = emoji.tags || [];
+            
+            // If we have translations for this language
+            if (language !== 'nl' && emoji.translations && emoji.translations[language]) {
+                label = emoji.translations[language].label || label;
+                tags = emoji.translations[language].tags || tags;
+            }
+            
+            let skinVariantsHtml = '';
+            if (hasSkins) {
+                skinVariantsHtml = '<div class="skin-variants">';
+                emoji.skins.forEach(skin => {
+                    skinVariantsHtml += `<span class="skin-variant">${skin.emoji}</span>`;
+                });
+                skinVariantsHtml += '</div>';
+            }
+            
+            // Format tags as a string
+            const tagsStr = tags.length ? `Tags: ${tags.join(', ')}` : '';
+            
+            return `
+                <div class="emoji-item ${hasSkins ? 'has-skins' : ''}" data-index="${index}">
+                    ${emoji.emoji}
+                    <div class="emoji-tooltip">
+                        <strong>${label}</strong><br>
+                        ${tagsStr}
+                        ${skinVariantsHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add a new language manually
+        function addLanguage() {
+            const languageName = elements.newLanguage.value.trim();
+            const languageCode = elements.languageCode.value.trim();
+            
+            if (!languageName || !languageCode) {
+                alert('Please enter both language name and code');
+                return;
+            }
+            
+            if (appState.languages[languageCode]) {
+                alert(`Language ${languageCode} already exists`);
+                return;
+            }
+            
+            // Add the language
+            appState.languages[languageCode] = {
+                name: languageName,
+                isOriginal: false
+            };
+            
+            // If we have emoji data, add empty translations
+            if (appState.emojiData) {
+                appState.emojiData.forEach(emoji => {
+                    if (!emoji.translations) {
+                        emoji.translations = {};
+                    }
+                    emoji.translations[languageCode] = {
+                        label: '',
+                        tags: []
+                    };
+                });
+            }
+            
+            // Update UI
+            updateLanguageLists();
+            
+            // Clear inputs
+            elements.newLanguage.value = '';
+            elements.languageCode.value = '';
+        }
+        
+        // Update language dropdown and list
+        function updateLanguageLists() {
+            // Update language dropdown
+            elements.languageSelect.innerHTML = '';
+            Object.keys(appState.languages).forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = appState.languages[code].name;
+                elements.languageSelect.appendChild(option);
+            });
+            
+            // Set current language
+            elements.languageSelect.value = appState.currentLanguage;
+            
+            // Update language list in settings
+            elements.languageList.innerHTML = '';
+            Object.keys(appState.languages).forEach(code => {
+                const lang = appState.languages[code];
+                const li = document.createElement('li');
+                li.textContent = `${lang.name} (${code})${lang.isOriginal ? ' (Original)' : ''}`;
+                elements.languageList.appendChild(li);
+            });
+            
+            // Enable or disable translate button
+            elements.translateBtn.disabled = !appState.emojiData || Object.keys(appState.languages).length <= 1;
+        }
+        
+        // Translate emoji data using OpenAI
+        async function translateWithOpenAI() {
+            const apiKey = elements.openaiKey.value.trim();
+            if (!apiKey) {
+                alert('Please enter your OpenAI API key');
+                return;
+            }
+            
+            // Store the API key
+            appState.openaiKey = apiKey;
+            
+            // Get target language
+            const targetLanguageCode = prompt('Enter the language code to translate to (e.g., en, fr, es):');
+            if (!targetLanguageCode) return;
+            
+            const targetLanguageName = prompt(`Enter the name of the language for "${targetLanguageCode}":`, '');
+            if (!targetLanguageName) return;
+            
+            // Add the language
+            appState.languages[targetLanguageCode] = {
+                name: targetLanguageName,
+                isOriginal: false
+            };
+            
+            // Show the modal
+            elements.translationModal.style.display = 'flex';
+            appState.translationInProgress = true;
+            
+            try {
+                // For each emoji, translate its label and tags
+                const total = appState.emojiData.length;
+                let completed = 0;
+                
+                for (const emoji of appState.emojiData) {
+                    // Skip if already translated
+                    if (emoji.translations && emoji.translations[targetLanguageCode]) {
+                        completed++;
+                        updateTranslationProgress(completed / total * 100);
+                        continue;
+                    }
+                    
+                    // Initialize translations if needed
+                    if (!emoji.translations) {
+                        emoji.translations = {};
+                    }
+                    
+                    try {
+                        const { label, tags } = await translateEmojiData(
+                            emoji.label, 
+                            emoji.tags || [], 
+                            targetLanguageCode
+                        );
+                        
+                        emoji.translations[targetLanguageCode] = {
+                            label,
+                            tags
+                        };
+                        
+                        completed++;
+                        updateTranslationProgress(completed / total * 100);
+                        elements.translationStatus.textContent = 
+                            `Translated ${completed} of ${total} emojis (${Math.round(completed / total * 100)}%)`;
+                            
+                        // If translation was canceled, stop the process
+                        if (!appState.translationInProgress) break;
+                        
+                    } catch (error) {
+                        console.error(`Error translating emoji ${emoji.emoji}:`, error);
+                        // Continue with next emoji
+                    }
+                }
+                
+                // Update UI
+                updateLanguageLists();
+                renderEmojiGrid();
+                
+                elements.translationStatus.textContent = 'Translation completed!';
+                setTimeout(() => {
+                    elements.translationModal.style.display = 'none';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('Translation error:', error);
+                elements.translationStatus.textContent = `Translation error: ${error.message}`;
+            } finally {
+                appState.translationInProgress = false;
+            }
+        }
+        
+        // Update translation progress bar
+        function updateTranslationProgress(percent) {
+            elements.translationProgress.style.width = `${percent}%`;
+        }
+        
+        // Call OpenAI API to translate emoji data
+        async function translateEmojiData(label, tags, targetLang) {
+            const prompt = `
+                Translate the following emoji description from Dutch to ${targetLang}:
+                
+                Label: ${label}
+                Tags: ${tags.join(', ')}
+                
+                Please respond with only a JSON object with the translated "label" and "tags" array, maintaining the meaning but in the target language.
+            `;
+            
+            // Get the selected model from the dropdown
+            const selectedModel = elements.gptModel.value;
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${appState.openaiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: selectedModel,
+                        messages: [{
+                            role: 'user',
+                            content: prompt
+                        }],
+                        temperature: 0.3
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.error?.message || 'Unknown error';
+                    const errorType = errorData.error?.type || '';
+                    const errorCode = errorData.error?.code || '';
+                    
+                    // Show detailed error information
+                    throw new Error(`OpenAI API error: ${errorMessage} [Type: ${errorType}, Code: ${errorCode}]`);
+                }
+                
+                const data = await response.json();
+                const content = data.choices[0]?.message?.content;
+                
+                try {
+                    // Extract JSON from the response
+                    const jsonStr = content.trim().match(/\{.*\}/s)?.[0];
+                    if (!jsonStr) throw new Error('No valid JSON found in response');
+                    
+                    const result = JSON.parse(jsonStr);
+                    return {
+                        label: result.label || label,  // Fallback to original if missing
+                        tags: Array.isArray(result.tags) ? result.tags : tags // Fallback to original if not an array
+                    };
+                } catch (error) {
+                    console.error('Error parsing translation result:', error, content);
+                    // Display the actual response content for debugging
+                    throw new Error(`Failed to parse GPT response: ${error.message}. Raw response: ${content.substring(0, 100)}...`);
+                }
+            } catch (error) {
+                // Show error in the UI
+                elements.translationStatus.textContent = `Error: ${error.message}`;
+                throw error; // Re-throw to be handled by caller
+            }
+        }
+        
+        // Event Listeners
+        elements.exportBtn.addEventListener('click', exportFilteredJSON);
+        elements.exportBtnView.addEventListener('click', exportFilteredJSON);
+        
+        elements.includeSkins.addEventListener('change', (e) => {
+            appState.includeSkins = e.target.checked;
+            updateExportInfo();
+        });
+        
+        elements.minifyOutput.addEventListener('change', (e) => {
+            appState.minifyOutput = e.target.checked;
+        });
+        
+        elements.maxVersion.addEventListener('change', (e) => {
+            appState.maxVersion = e.target.value ? parseFloat(e.target.value) : null;
+            updateExportInfo();
+        });
+        
+        elements.sortBy.addEventListener('change', renderEmojiGrid);
+        elements.groupBy.addEventListener('change', renderEmojiGrid);
+        
+        elements.languageSelect.addEventListener('change', (e) => {
+            appState.currentLanguage = e.target.value;
+            renderEmojiGrid();
+        });
+        
+        elements.addLanguageBtn.addEventListener('click', addLanguage);
+        
+        elements.translateBtn.addEventListener('click', translateWithOpenAI);
+        
+        elements.cancelTranslationBtn.addEventListener('click', () => {
+            appState.translationInProgress = false;
+            elements.translationStatus.textContent = 'Translation canceled';
+            setTimeout(() => {
+                elements.translationModal.style.display = 'none';
+            }, 1500);
+        });
+        
+        // Selection controls event listeners
+        elements.excludeAllBtn.addEventListener('click', excludeAllEmojis);
+        elements.includeAllBtn.addEventListener('click', includeAllEmojis);
+        
+        // Initialize the UI
+        updateLanguageLists();
+    </script>
+</body>
+</html>

@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Visualizer - Vibe Code Projects</title>
+    <style>
+        :root {
+            --primary-color: #0366d6;
+            --secondary-color: #28a745;
+            --bg-color: #f6f8fa;
+            --card-bg: #ffffff;
+            --text-color: #24292e;
+            --border-color: #e1e4e8;
+            --commit-color: #0366d6;
+            --branch-color: #28a745;
+            --head-color: #f9826c;
+            --merge-color: #8957e5;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            grid-gap: 20px;
+        }
+
+        @media (max-width: 800px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            padding: 20px;
+        }
+
+        .visualization {
+            background-color: var(--card-bg);
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            padding: 20px;
+            overflow: auto;
+            height: 70vh;
+        }
+
+        .command-input {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: monospace;
+            margin-right: 10px;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: #0258b8;
+        }
+
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+
+        button.secondary:hover {
+            background-color: #218c3a;
+        }
+
+        .command-history {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #f1f1f1;
+        }
+
+        .command-history-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .command-item {
+            font-family: monospace;
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #fff;
+            border-radius: 3px;
+        }
+
+        .save-load-panel {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .save-load-panel input {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .saved-states {
+            margin-top: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .state-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+            border-radius: 3px;
+            margin-bottom: 5px;
+        }
+
+        .state-item button {
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+
+        .git-graph {
+            position: relative;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .commit-node {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--commit-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2;
+            transition: transform 0.2s;
+        }
+
+        .commit-node:hover {
+            transform: scale(1.2);
+        }
+
+        .commit-node.head {
+            border: 3px solid var(--head-color);
+        }
+
+        .branch-label {
+            position: absolute;
+            background-color: var(--branch-color);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            z-index: 3;
+        }
+
+        .branch-label.head {
+            background-color: var(--head-color);
+        }
+
+        .commit-edge {
+            position: absolute;
+            background-color: #aaa;
+            z-index: 1;
+        }
+
+        .commit-details {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f1f1f1;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .commit-details.visible {
+            display: block;
+        }
+
+        .error-message {
+            color: #d73a49;
+            background-color: #ffeef0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Git Visualizer</h1>
+            <p>Enter git commands and visualize the internal state of Git</p>
+        </header>
+
+        <div class="app-container">
+            <div class="control-panel">
+                <div class="command-input">
+                    <input type="text" id="command-input" placeholder="Enter git command...">
+                    <button id="execute-btn">Execute</button>
+                </div>
+
+                <div id="error-message" class="error-message"></div>
+
+                <div class="save-load-panel">
+                    <input type="text" id="save-name" placeholder="Save name...">
+                    <button id="save-btn" class="secondary">Save State</button>
+                    <button id="load-btn">Load State</button>
+                </div>
+
+                <div class="saved-states" id="saved-states-list">
+                    <!-- Saved states will be listed here -->
+                </div>
+
+                <div class="command-history">
+                    <div class="command-history-title">Command History:</div>
+                    <div id="history-list">
+                        <!-- Command history items will be listed here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="visualization">
+                <div id="git-graph" class="git-graph">
+                    <!-- Git graph will be rendered here -->
+                </div>
+                <div id="commit-details" class="commit-details">
+                    <!-- Selected commit details will be shown here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Git state model
+            const gitState = {
+                commits: {},
+                branches: {},
+                HEAD: null,
+                nextCommitId: 1,
+                commandHistory: [],
+                branchYPositions: {}  // Track the Y position for each branch
+            };
+
+            // DOM Elements
+            const commandInput = document.getElementById('command-input');
+            const executeBtn = document.getElementById('execute-btn');
+            const historyList = document.getElementById('history-list');
+            const gitGraph = document.getElementById('git-graph');
+            const commitDetails = document.getElementById('commit-details');
+            const errorMessage = document.getElementById('error-message');
+            const saveNameInput = document.getElementById('save-name');
+            const saveBtn = document.getElementById('save-btn');
+            const loadBtn = document.getElementById('load-btn');
+            const savedStatesList = document.getElementById('saved-states-list');
+
+            // Initialize Git repository
+            function initRepo() {
+                // Clear existing state
+                gitState.commits = {};
+                gitState.branches = {};
+                gitState.HEAD = null;
+                gitState.nextCommitId = 1;
+                gitState.commandHistory = [];
+                gitState.branchYPositions = { 'master': 50 };  // Initial Y position for master branch
+
+                // Create initial commit
+                const initialCommit = {
+                    id: 'initial',
+                    message: 'Initial commit',
+                    parents: [],
+                    timestamp: new Date().toISOString(),
+                    x: 100,
+                    y: 50,
+                    branch: 'master'  // Track which branch this commit belongs to
+                };
+
+                gitState.commits['initial'] = initialCommit;
+
+                // Create master branch pointing to initial commit
+                gitState.branches['master'] = 'initial';
+                
+                // Set HEAD to master
+                gitState.HEAD = {
+                    type: 'branch',
+                    ref: 'master'
+                };
+
+                addToHistory('git init');
+                renderGraph();
+            }
+
+            // Add a command to history
+            function addToHistory(command) {
+                gitState.commandHistory.push(command);
+                
+                const item = document.createElement('div');
+                item.className = 'command-item';
+                item.textContent = '$ ' + command;
+                historyList.appendChild(item);
+                historyList.scrollTop = historyList.scrollHeight;
+            }
+
+            // Show error message
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 5000);
+            }
+
+            // Parse and execute git command
+            function executeCommand(commandStr) {
+                const parts = commandStr.trim().split(' ');
+                
+                if (parts[0] !== 'git') {
+                    showError('All commands must start with "git"');
+                    return;
+                }
+
+                const command = parts[1];
+                const args = parts.slice(2);
+
+                try {
+                    switch (command) {
+                        case 'init':
+                            initRepo();
+                            break;
+                            
+                        case 'commit':
+                            if (args[0] === '-m') {
+                                const message = args.slice(1).join(' ');
+                                createCommit(message);
+                            } else {
+                                showError('Invalid commit command. Use -m "message"');
+                            }
+                            break;
+                            
+                        case 'branch':
+                            if (args.length === 1) {
+                                createBranch(args[0]);
+                            } else {
+                                showError('Invalid branch command. Use: git branch <branch-name>');
+                            }
+                            break;
+                            
+                        case 'checkout':
+                            if (args.length === 1) {
+                                checkout(args[0]);
+                            } else if (args.length === 2 && args[0] === '-b') {
+                                createBranch(args[1]);
+                                checkout(args[1]);
+                            } else {
+                                showError('Invalid checkout command. Use: git checkout <branch-name> or git checkout -b <new-branch>');
+                            }
+                            break;
+                            
+                        case 'merge':
+                            if (args.length === 1) {
+                                merge(args[0]);
+                            } else {
+                                showError('Invalid merge command. Use: git merge <branch-name>');
+                            }
+                            break;
+                            
+                        default:
+                            showError(`Command not supported: git ${command}`);
+                            return;
+                    }
+                    
+                    addToHistory(commandStr);
+                    renderGraph();
+                    
+                } catch (error) {
+                    showError(error.message);
+                }
+            }
+
+            // Create a new commit
+            function createCommit(message) {
+                // Get current HEAD commit
+                const headCommitId = getHeadCommitId();
+                if (!headCommitId) {
+                    throw new Error('Cannot commit: HEAD not pointing to a valid reference');
+                }
+
+                const commitId = 'c' + gitState.nextCommitId++;
+                const parentCommit = gitState.commits[headCommitId];
+                const currentBranch = gitState.HEAD.type === 'branch' ? gitState.HEAD.ref : 'detached';
+                
+                // Get the Y position for the current branch
+                const branchY = gitState.branchYPositions[currentBranch] || parentCommit.y;
+                
+                gitState.commits[commitId] = {
+                    id: commitId,
+                    message,
+                    parents: [headCommitId],
+                    timestamp: new Date().toISOString(),
+                    x: parentCommit.x + 100,
+                    y: branchY,
+                    branch: currentBranch
+                };
+
+                // Update current branch to point to new commit
+                if (gitState.HEAD.type === 'branch') {
+                    gitState.branches[gitState.HEAD.ref] = commitId;
+                } else {
+                    gitState.HEAD = {
+                        type: 'commit',
+                        ref: commitId
+                    };
+                }
+            }
+
+            // Create a new branch
+            function createBranch(branchName) {
+                if (gitState.branches[branchName]) {
+                    throw new Error(`Branch '${branchName}' already exists`);
+                }
+
+                const headCommitId = getHeadCommitId();
+                if (!headCommitId) {
+                    throw new Error('Cannot create branch: HEAD not pointing to a valid reference');
+                }
+
+                // Calculate a new Y position for this branch that doesn't overlap with existing branches
+                // Start with a higher Y value than existing branches
+                let newY = 50;  // Default starting position
+                
+                // Find the highest Y value currently in use and add some space
+                Object.values(gitState.branchYPositions).forEach(y => {
+                    newY = Math.max(newY, y + 70);  // Leave 70px gap between branches
+                });
+                
+                gitState.branchYPositions[branchName] = newY;
+                gitState.branches[branchName] = headCommitId;
+            }
+
+            // Checkout a branch or commit
+            function checkout(ref) {
+                // Check if it's a branch
+                if (gitState.branches[ref]) {
+                    gitState.HEAD = {
+                        type: 'branch',
+                        ref: ref
+                    };
+                    return;
+                }
+
+                // Check if it's a commit
+                if (gitState.commits[ref]) {
+                    gitState.HEAD = {
+                        type: 'commit',
+                        ref: ref
+                    };
+                    return;
+                }
+
+                throw new Error(`Reference '${ref}' not found`);
+            }
+
+            // Merge a branch into current branch
+            function merge(branchName) {
+                if (!gitState.branches[branchName]) {
+                    throw new Error(`Branch '${branchName}' not found`);
+                }
+
+                if (gitState.HEAD.type !== 'branch') {
+                    throw new Error('Cannot merge: HEAD is not pointing to a branch. Checkout a branch first.');
+                }
+
+                const currentBranch = gitState.HEAD.ref;
+                const currentCommitId = gitState.branches[currentBranch];
+                const sourceCommitId = gitState.branches[branchName];
+
+                // Check if fast-forward is possible
+                if (isAncestor(currentCommitId, sourceCommitId)) {
+                    // Fast-forward merge
+                    gitState.branches[currentBranch] = sourceCommitId;
+                    return;
+                }
+
+                // Create merge commit
+                const mergeCommitId = 'c' + gitState.nextCommitId++;
+                const sourceCommit = gitState.commits[sourceCommitId];
+                const currentCommit = gitState.commits[currentCommitId];
+                
+                gitState.commits[mergeCommitId] = {
+                    id: mergeCommitId,
+                    message: `Merge branch '${branchName}' into ${currentBranch}`,
+                    parents: [currentCommitId, sourceCommitId],
+                    timestamp: new Date().toISOString(),
+                    x: Math.max(currentCommit.x, sourceCommit.x) + 100,
+                    y: currentCommit.y
+                };
+
+                gitState.branches[currentBranch] = mergeCommitId;
+            }
+
+            // Check if commit1 is an ancestor of commit2
+            function isAncestor(commit1, commit2) {
+                if (commit1 === commit2) return true;
+                
+                const visited = new Set();
+                const queue = [...gitState.commits[commit2].parents];
+                
+                while (queue.length > 0) {
+                    const current = queue.shift();
+                    
+                    if (current === commit1) return true;
+                    if (visited.has(current)) continue;
+                    
+                    visited.add(current);
+                    
+                    if (gitState.commits[current]) {
+                        queue.push(...gitState.commits[current].parents);
+                    }
+                }
+                
+                return false;
+            }
+
+            // Get the commit ID that HEAD is pointing to
+            function getHeadCommitId() {
+                if (!gitState.HEAD) return null;
+                
+                if (gitState.HEAD.type === 'commit') {
+                    return gitState.HEAD.ref;
+                } else if (gitState.HEAD.type === 'branch') {
+                    return gitState.branches[gitState.HEAD.ref];
+                }
+                
+                return null;
+            }
+
+            // Render the Git graph visualization
+            function renderGraph() {
+                gitGraph.innerHTML = '';
+                commitDetails.classList.remove('visible');
+
+                // Layout the graph
+                layoutGraph();
+
+                // Draw edges
+                Object.values(gitState.commits).forEach(commit => {
+                    commit.parents.forEach(parentId => {
+                        const parent = gitState.commits[parentId];
+                        if (parent) {
+                            createEdge(parent, commit);
+                        }
+                    });
+                });
+
+                // Draw nodes
+                Object.values(gitState.commits).forEach(commit => {
+                    createCommitNode(commit);
+                });
+
+                // Draw branch labels
+                Object.entries(gitState.branches).forEach(([branchName, commitId]) => {
+                    const commit = gitState.commits[commitId];
+                    if (commit) {
+                        createBranchLabel(branchName, commit);
+                    }
+                });
+            }
+
+            // Layout algorithm for positioning commits
+            function layoutGraph() {
+                // This is a more sophisticated layout algorithm that makes sure branches don't overlap
+                // and are properly spaced vertically
+                
+                // First, build a graph of commits by branch
+                const branchCommits = {};
+                let branchCount = 0;
+                
+                // Initialize branch commit collections
+                Object.keys(gitState.branches).forEach(branch => {
+                    branchCommits[branch] = [];
+                    branchCount++;
+                });
+                
+                // Assign commits to their branches
+                Object.values(gitState.commits).forEach(commit => {
+                    // If commit has a branch property, use it, otherwise try to determine branch
+                    let branch = commit.branch;
+                    
+                    // If branch not assigned, find the branch pointing to this commit
+                    if (!branch) {
+                        for (const [branchName, commitId] of Object.entries(gitState.branches)) {
+                            if (commitId === commit.id) {
+                                branch = branchName;
+                                commit.branch = branch;
+                                break;
+                            }
+                        }
+                        
+                        // If still no branch, use the parent's branch
+                        if (!branch && commit.parents.length > 0) {
+                            const parent = gitState.commits[commit.parents[0]];
+                            if (parent && parent.branch) {
+                                branch = parent.branch;
+                                commit.branch = branch;
+                            }
+                        }
+                    }
+                    
+                    if (branch && branchCommits[branch]) {
+                        branchCommits[branch].push(commit);
+                    }
+                });
+                
+                // Position commits - keep X coordinate by commit sequencing, adjust Y by branch
+                Object.entries(branchCommits).forEach(([branch, commits]) => {
+                    // Get the Y position for this branch
+                    const branchY = gitState.branchYPositions[branch] || (50 + Object.keys(gitState.branchYPositions).length * 70);
+                    
+                    // Store the Y position if it's not already stored
+                    if (!gitState.branchYPositions[branch]) {
+                        gitState.branchYPositions[branch] = branchY;
+                    }
+                    
+                    // Update all commits on this branch to use the branch's Y position
+                    commits.forEach(commit => {
+                        commit.y = branchY;
+                    });
+                });
+                
+                // Special handling for merge commits - position them at the branch they belong to
+                Object.values(gitState.commits).forEach(commit => {
+                    if (commit.parents.length > 1) {
+                        // This is a merge commit
+                        // Keep it at the Y position of its branch
+                        if (commit.branch && gitState.branchYPositions[commit.branch]) {
+                            commit.y = gitState.branchYPositions[commit.branch];
+                        }
+                    }
+                });
+                
+                // Make sure graph has adequate size
+                let maxX = 0, maxY = 0;
+                
+                Object.values(gitState.commits).forEach(commit => {
+                    maxX = Math.max(maxX, commit.x);
+                    maxY = Math.max(maxY, commit.y);
+                });
+                
+                gitGraph.style.width = (maxX + 200) + 'px';
+                gitGraph.style.height = (maxY + 200) + 'px';
+            }
+
+            // Create a commit node element
+            function createCommitNode(commit) {
+                const node = document.createElement('div');
+                node.className = 'commit-node';
+                
+                // Check if this is HEAD
+                const headCommitId = getHeadCommitId();
+                if (commit.id === headCommitId) {
+                    node.classList.add('head');
+                }
+                
+                node.style.left = commit.x + 'px';
+                node.style.top = commit.y + 'px';
+                node.textContent = commit.id.replace('c', '');
+                node.title = commit.message;
+                
+                node.addEventListener('click', () => {
+                    showCommitDetails(commit);
+                });
+                
+                gitGraph.appendChild(node);
+            }
+
+            // Create an edge between two commit nodes
+            function createEdge(fromCommit, toCommit) {
+                const edgeEl = document.createElement('div');
+                edgeEl.className = 'commit-edge';
+                
+                // Calculate the angle and length
+                const dx = toCommit.x - fromCommit.x;
+                const dy = toCommit.y - fromCommit.y;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                // Position and rotate the edge
+                edgeEl.style.width = length + 'px';
+                edgeEl.style.height = '2px';
+                edgeEl.style.left = fromCommit.x + 15 + 'px';  // 15px is half the node width
+                edgeEl.style.top = fromCommit.y + 15 + 'px';  // 15px is half the node height
+                edgeEl.style.transformOrigin = '0 0';
+                edgeEl.style.transform = `rotate(${angle}deg)`;
+                
+                // For merge commits or branch connections, make the line more visible
+                if (toCommit.parents.length > 1 || fromCommit.branch !== toCommit.branch) {
+                    edgeEl.style.backgroundColor = '#666';
+                    edgeEl.style.height = '2.5px';
+                }
+                
+                gitGraph.appendChild(edgeEl);
+            }
+
+            // Create a branch label
+            function createBranchLabel(branchName, commit) {
+                const label = document.createElement('div');
+                label.className = 'branch-label';
+                
+                // Check if this branch is HEAD
+                if (gitState.HEAD && gitState.HEAD.type === 'branch' && gitState.HEAD.ref === branchName) {
+                    label.classList.add('head');
+                }
+                
+                label.textContent = branchName;
+                label.style.left = commit.x + 40 + 'px';  // Position to the right of commit
+                label.style.top = commit.y - 10 + 'px';   // Position slightly above commit
+                
+                label.addEventListener('click', () => {
+                    commandInput.value = `git checkout ${branchName}`;
+                    executeBtn.click();
+                });
+                
+                gitGraph.appendChild(label);
+            }
+
+            // Show details of a selected commit
+            function showCommitDetails(commit) {
+                commitDetails.innerHTML = `
+                    <h3>Commit: ${commit.id}</h3>
+                    <p><strong>Message:</strong> ${commit.message}</p>
+                    <p><strong>Time:</strong> ${new Date(commit.timestamp).toLocaleString()}</p>
+                    <p><strong>Parents:</strong> ${commit.parents.join(', ') || 'None'}</p>
+                    <button id="checkout-commit-btn">Checkout this commit</button>
+                `;
+                
+                commitDetails.classList.add('visible');
+                
+                document.getElementById('checkout-commit-btn').addEventListener('click', () => {
+                    commandInput.value = `git checkout ${commit.id}`;
+                    executeBtn.click();
+                });
+            }
+
+            // Save current state to localStorage
+            function saveState() {
+                const name = saveNameInput.value.trim();
+                if (!name) {
+                    showError('Please enter a name for the saved state');
+                    return;
+                }
+                
+                const savedStates = getSavedStates();
+                savedStates[name] = {
+                    timestamp: new Date().toISOString(),
+                    state: { ...gitState }
+                };
+                
+                localStorage.setItem('gitVisualizer.savedStates', JSON.stringify(savedStates));
+                saveNameInput.value = '';
+                updateSavedStatesList();
+            }
+
+            // Load saved state from localStorage
+            function loadState(name) {
+                const savedStates = getSavedStates();
+                const savedState = savedStates[name];
+                
+                if (savedState) {
+                    Object.assign(gitState, savedState.state);
+                    renderGraph();
+                    
+                    // Update history display
+                    historyList.innerHTML = '';
+                    gitState.commandHistory.forEach(cmd => {
+                        const item = document.createElement('div');
+                        item.className = 'command-item';
+                        item.textContent = '$ ' + cmd;
+                        historyList.appendChild(item);
+                    });
+                }
+            }
+
+            // Get all saved states from localStorage
+            function getSavedStates() {
+                const savedStatesJson = localStorage.getItem('gitVisualizer.savedStates');
+                return savedStatesJson ? JSON.parse(savedStatesJson) : {};
+            }
+
+            // Update the saved states list in the UI
+            function updateSavedStatesList() {
+                savedStatesList.innerHTML = '';
+                
+                const savedStates = getSavedStates();
+                
+                Object.entries(savedStates).forEach(([name, {timestamp}]) => {
+                    const item = document.createElement('div');
+                    item.className = 'state-item';
+                    
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = name;
+                    
+                    const loadBtn = document.createElement('button');
+                    loadBtn.textContent = 'Load';
+                    loadBtn.addEventListener('click', () => loadState(name));
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.style.backgroundColor = '#d73a49';
+                    deleteBtn.addEventListener('click', () => {
+                        const states = getSavedStates();
+                        delete states[name];
+                        localStorage.setItem('gitVisualizer.savedStates', JSON.stringify(states));
+                        updateSavedStatesList();
+                    });
+                    
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.style.display = 'flex';
+                    buttonContainer.style.gap = '5px';
+                    buttonContainer.appendChild(loadBtn);
+                    buttonContainer.appendChild(deleteBtn);
+                    
+                    item.appendChild(nameSpan);
+                    item.appendChild(buttonContainer);
+                    savedStatesList.appendChild(item);
+                });
+            }
+
+            // Event Listeners
+            executeBtn.addEventListener('click', () => {
+                const command = commandInput.value.trim();
+                if (command) {
+                    executeCommand(command);
+                    commandInput.value = '';
+                }
+            });
+
+            commandInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    executeBtn.click();
+                }
+            });
+
+            saveBtn.addEventListener('click', saveState);
+            
+            loadBtn.addEventListener('click', () => {
+                const name = saveNameInput.value.trim();
+                if (name) {
+                    loadState(name);
+                } else {
+                    showError('Please enter the name of the state to load');
+                }
+            });
+
+            // Initialize
+            initRepo();
+            updateSavedStatesList();
+        });
+    </script>
+</body>
+</html>
