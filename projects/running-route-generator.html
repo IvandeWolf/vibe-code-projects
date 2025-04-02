@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Running Route Generator</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <!-- Leaflet Geocoder CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        header {
+            background-color: #3498db;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                flex-direction: row;
+            }
+        }
+        
+        .sidebar {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            z-index: 10;
+        }
+        
+        @media (min-width: 768px) {
+            .sidebar {
+                width: 300px;
+                margin-right: 20px;
+                margin-bottom: 0;
+            }
+        }
+        
+        .map-container {
+            flex-grow: 1;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            height: 500px;
+            z-index: 1;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        h1 {
+            margin-top: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .route-info {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        /* Customize geocoder dropdown */
+        .leaflet-control-geocoder-alternatives {
+            max-height: 150px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+        
+        .leaflet-routing-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        }
+        
+        /* Hide default itinerary */
+        .leaflet-routing-container.leaflet-routing-container-hide {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Running Route Generator</h1>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar">
+            <h2>Route Options</h2>
+            
+            <div class="error" id="error-message"></div>
+            
+            <div>
+                <label for="start-location">Starting Location:</label>
+                <input type="text" id="start-location" placeholder="Enter address or place name">
+            </div>
+            
+            <div>
+                <label for="distance">Desired Distance (km):</label>
+                <input type="number" id="distance" min="1" max="50" step="0.1" value="5">
+            </div>
+            
+            <button id="generate-route">Generate Route</button>
+            <button id="clear-route">Clear Route</button>
+            
+            <div class="route-info" id="route-info">
+                <h3>Route Information</h3>
+                <p>Actual Distance: <span id="actual-distance">-</span> km</p>
+                <p>Estimated Duration: <span id="estimated-duration">-</span></p>
+            </div>
+            
+            <a href="../index.html" class="back-link">← Back to Projects</a>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    <!-- Leaflet Geocoder JS -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+    <script>
+        let map;
+        let routingControl;
+        let geocoder;
+        let startMarker = null;
+        let isSearching = false;
+        
+        // Initialize map when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+            
+            // Add event listeners
+            document.getElementById('generate-route').addEventListener('click', generateRoute);
+            document.getElementById('clear-route').addEventListener('click', clearRoute);
+            
+            // Prevent form submission when pressing Enter
+            document.getElementById('start-location').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    geocodeLocation();
+                }
+            });
+        });
+        
+        // Initialize Leaflet map
+        function initMap() {
+            // Create map instance with default view of Europe
+            map = L.map('map').setView([52.3702, 4.8952], 13);
+            
+            // Add the OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+            }).addTo(map);
+            
+            // Initialize geocoder
+            geocoder = L.Control.Geocoder.nominatim();
+            
+            // Add search control to map
+            L.Control.geocoder({
+                geocoder: geocoder,
+                placeholder: 'Search for a location...',
+                defaultMarkGeocode: false
+            })
+            .on('markgeocode', function(e) {
+                const result = e.geocode;
+                const latlng = result.center;
+                
+                // Set input value to found address
+                document.getElementById('start-location').value = result.name;
+                
+                // Add marker at start location
+                setStartMarker(latlng);
+                
+                // Center map on location
+                map.setView(latlng, 14);
+            })
+            .addTo(map);
+            
+            // Try to get user's location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        // Center map on user location
+                        map.setView([lat, lng], 14);
+                        
+                        // Add marker at start location
+                        setStartMarker([lat, lng]);
+                        
+                        // Reverse geocode to get address
+                        reverseGeocode([lat, lng]);
+                    },
+                    (error) => {
+                        console.log('Geolocation error:', error);
+                    }
+                );
+            }
+        }
+        
+        // Set a marker for the start location
+        function setStartMarker(latlng) {
+            // Remove existing marker if there is one
+            if (startMarker) {
+                map.removeLayer(startMarker);
+            }
+            
+            // Create new marker
+            startMarker = L.marker(latlng, {
+                draggable: true,
+                title: 'Start Location'
+            }).addTo(map);
+            
+            // Update address when marker is dragged
+            startMarker.on('dragend', function(e) {
+                const newPos = e.target.getLatLng();
+                reverseGeocode([newPos.lat, newPos.lng]);
+            });
+        }
+        
+        // Reverse geocode - convert coordinates to address
+        function reverseGeocode(latlng) {
+            geocoder.reverse(latlng, map.options.crs.scale(map.getZoom()), results => {
+                if (results && results.length > 0) {
+                    document.getElementById('start-location').value = results[0].name;
+                }
+            });
+        }
+        
+        // Forward geocode - convert address to coordinates
+        function geocodeLocation() {
+            const location = document.getElementById('start-location').value;
+            
+            if (!location) {
+                showError("Please enter a starting location");
+                return null;
+            }
+            
+            return new Promise((resolve, reject) => {
+                geocoder.geocode(location, results => {
+                    if (!results || results.length === 0) {
+                        showError("Could not find the location. Please try a different address.");
+                        resolve(null);
+                    } else {
+                        const result = results[0];
+                        setStartMarker(result.center);
+                        map.setView(result.center, 14);
+                        resolve(result.center);
+                    }
+                });
+            });
+        }
+        
+        // Generate a running route
+        async function generateRoute() {
+            const targetDistance = parseFloat(document.getElementById('distance').value);
+            
+            if (isNaN(targetDistance) || targetDistance <= 0) {
+                showError("Please enter a valid distance");
+                return;
+            }
+            
+            hideError();
+            showLoading();
+            
+            let startPoint;
+            const location = document.getElementById('start-location').value;
+            
+            // If there's text in the location input, geocode it first
+            if (location && location.trim() !== '') {
+                startPoint = await geocodeLocation();
+                if (!startPoint) {
+                    hideLoading();
+                    return;
+                }
+            } 
+            // If we already have a marker, use its position
+            else if (startMarker) {
+                startPoint = startMarker.getLatLng();
+            } else {
+                // No location and no marker
+                showError("Please enter a starting location");
+                hideLoading();
+                return;
+            }
+            
+            // Create a circular route based on the starting point and desired distance
+            createCircularRoute(startPoint, targetDistance);
+        }
+        
+        // Clear the current route
+        function clearRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            
+            document.getElementById('actual-distance').textContent = '-';
+            document.getElementById('estimated-duration').textContent = '-';
+        }
+        
+        // Create a circular route with waypoints
+        function createCircularRoute(startPoint, targetDistance) {
+            // Check if startPoint has valid lat/lng properties
+            // Sometimes startPoint might not have direct lat/lng properties depending on how it was created
+            const lat = startPoint.lat !== undefined ? startPoint.lat : (typeof startPoint.lat === 'function' ? startPoint.lat() : null);
+            const lng = startPoint.lng !== undefined ? startPoint.lng : (typeof startPoint.lng === 'function' ? startPoint.lng() : null);
+            
+            // If we couldn't get valid coordinates, show error and return
+            if (lat === null || lng === null) {
+                hideLoading();
+                showError("Invalid start location. Please try a different location.");
+                return;
+            }
+            
+            // Start with a much smaller initial radius since the actual route will be longer
+            // A typical walking route following roads is roughly 1.4-1.8 times longer than direct lines
+            let radiusKm = targetDistance / (2 * Math.PI) / 2; // Start with half the theoretical radius
+            
+            // Convert radius to degrees (roughly)
+            // 1 degree of latitude is approximately 111 km
+            let radiusDegLat = radiusKm / 111;
+            let radiusDegLng = radiusKm / (111 * Math.cos(lat * (Math.PI / 180)));
+            
+            // Create a standardized point object with consistent properties
+            const standardizedPoint = {
+                lat: lat,
+                lng: lng
+            };
+            
+            generateRouteWithRadius(standardizedPoint, radiusDegLat, radiusDegLng, targetDistance);
+        }
+        
+        // Generate a route with the given radius, adjusting if needed
+        function generateRouteWithRadius(startPoint, radiusDegLat, radiusDegLng, targetDistance, attempt = 1) {
+            // Limit the number of attempts to prevent infinite loops
+            if (attempt > 5) {
+                hideLoading();
+                showError("Could not generate a route with the exact distance. The closest match is shown.");
+                return;
+            }
+            
+            // Generate waypoints around the circle
+            const numWaypoints = 4; // Use 4 waypoints for a roughly circular route
+            const waypoints = [];
+            
+            for (let i = 0; i < numWaypoints; i++) {
+                const angle = (i / numWaypoints) * 2 * Math.PI;
+                
+                // Calculate offset from center
+                const lat = startPoint.lat + radiusDegLat * Math.cos(angle);
+                const lng = startPoint.lng + radiusDegLng * Math.sin(angle);
+                
+                waypoints.push(L.latLng(lat, lng));
+            }
+            
+            // Add start point as both first and last waypoint to make a loop
+            waypoints.unshift(L.latLng(startPoint.lat, startPoint.lng));
+            waypoints.push(L.latLng(startPoint.lat, startPoint.lng));
+            
+            // Clear any existing route
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            
+            // Create the routing control with the waypoints
+            routingControl = L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: false,
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1',
+                    profile: 'foot', // Use walking profile
+                }),
+                lineOptions: {
+                    styles: [
+                        {color: '#3498db', opacity: 0.8, weight: 6},
+                        {color: '#2980b9', opacity: 0.9, weight: 4}
+                    ]
+                },
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                showAlternatives: false,
+                createMarker: function(i, wp) {
+                    // Only show markers at the start/end point
+                    if (i === 0 || i === waypoints.length - 1) {
+                        return L.marker(wp.latLng, {
+                            icon: L.icon({
+                                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                                iconSize: [25, 41],
+                                iconAnchor: [12, 41],
+                                popupAnchor: [1, -34],
+                                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                                shadowSize: [41, 41]
+                            })
+                        });
+                    }
+                    return null;
+                }
+            }).addTo(map);
+            
+            // Handle routing errors
+            routingControl.on('routingerror', function(e) {
+                hideLoading();
+                showError("Could not generate a route. Please try a different location or distance.");
+            });
+            
+            // Handle successful route creation
+            routingControl.on('routesfound', function(e) {
+                if (e.routes && e.routes.length > 0) {
+                    const route = e.routes[0];
+                    const actualDistance = route.summary.totalDistance / 1000; // in km
+                    
+                    // Calculate difference from target
+                    const difference = Math.abs(actualDistance - targetDistance);
+                    
+                    // If the difference is more than 15% of target and we haven't tried too many times
+                    if (difference > targetDistance * 0.15 && attempt < 5) {
+                        // Adjust radius based on the ratio of target to actual distance
+                        const adjustFactor = targetDistance / actualDistance;
+                        // Don't adjust too drastically
+                        const newRadiusLat = radiusDegLat * (0.7 + 0.3 * adjustFactor);
+                        const newRadiusLng = radiusDegLng * (0.7 + 0.3 * adjustFactor);
+                        
+                        // Try again with adjusted radius
+                        map.removeControl(routingControl);
+                        generateRouteWithRadius(startPoint, newRadiusLat, newRadiusLng, targetDistance, attempt + 1);
+                    } else {
+                        // We're close enough or tried too many times, update info and finish
+                        hideLoading();
+                        updateRouteInfo(route);
+                    }
+                } else {
+                    hideLoading();
+                }
+            });
+        }
+        
+        // Update the route information display
+        function updateRouteInfo(route) {
+            if (!route) return;
+            
+            // Calculate total distance in km (with 2 decimal places)
+            const distanceKm = (route.summary.totalDistance / 1000).toFixed(2);
+            
+            // Calculate duration
+            const totalMinutes = Math.ceil(route.summary.totalTime / 60);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            
+            let durationText = '';
+            if (hours > 0) {
+                durationText = `${hours} hour${hours > 1 ? 's' : ''}`;
+                if (minutes > 0) {
+                    durationText += ` ${minutes} minute${minutes > 1 ? 's' : ''}`;
+                }
+            } else {
+                durationText = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+            }
+            
+            // Update UI
+            document.getElementById('actual-distance').textContent = distanceKm;
+            document.getElementById('estimated-duration').textContent = durationText;
+        }
+        
+        // Show loading indicator
+        function showLoading() {
+            document.getElementById('loading').style.display = 'flex';
+        }
+        
+        // Hide loading indicator
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        // Hide error message
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

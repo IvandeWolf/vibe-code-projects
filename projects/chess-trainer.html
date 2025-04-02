@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Trainer</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            color: #333;
+        }
+        
+        h1, h2 {
+            text-align: center;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        
+        .stats div {
+            text-align: center;
+        }
+        
+        .chessboard {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #333;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            margin: 20px 0;
+        }
+        
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            cursor: pointer;
+        }
+        
+        .white {
+            background-color: #f0d9b5;
+        }
+        
+        .black {
+            background-color: #b58863;
+        }
+        
+        .selected {
+            background-color: #7ea9d8;
+        }
+        
+        .valid-move {
+            position: relative;
+        }
+        
+        .valid-move::after {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(0, 128, 0, 0.4);
+            border-radius: 50%;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .puzzle-info {
+            margin: 20px 0;
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            width: 100%;
+        }
+        
+        .message {
+            color: #333;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .success {
+            background-color: rgba(76, 175, 80, 0.3);
+        }
+        
+        .error {
+            background-color: rgba(255, 0, 0, 0.3);
+        }
+        
+        .back-button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            width: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-button">Back to Projects</a>
+    
+    <h1>Chess Trainer</h1>
+    
+    <div class="container">
+        <div class="stats">
+            <div>
+                <h3>Difficulty</h3>
+                <p id="difficulty-level">1</p>
+            </div>
+            <div>
+                <h3>Score</h3>
+                <p id="score">0</p>
+            </div>
+            <div>
+                <h3>Streak</h3>
+                <p id="streak">0</p>
+            </div>
+        </div>
+        
+        <div class="puzzle-info">
+            <h3 id="puzzle-title">Puzzle #1</h3>
+            <p id="puzzle-description">Find the best move for White</p>
+        </div>
+        
+        <div class="chessboard" id="chessboard"></div>
+        
+        <div class="message" id="message"></div>
+        
+        <div class="controls">
+            <button id="new-puzzle">New Puzzle</button>
+            <button id="hint">Get Hint</button>
+            <button id="solution">Show Solution</button>
+        </div>
+    </div>
+
+    <script>
+        // Chess pieces Unicode
+        const pieces = {
+            'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙', // White pieces
+            'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟', // Black pieces
+            '.': '' // Empty square
+        };
+
+        // Variables to track game state
+        let currentDifficulty = 1;
+        let currentScore = 0;
+        let currentStreak = 0;
+        let selectedSquare = null;
+        let board = [];
+        let validMoves = [];
+        let currentPuzzle = null;
+        let puzzleAttempts = 0;
+        
+        // Puzzles by difficulty level (1-5)
+        // Each puzzle has a starting position (FEN-like), correct moves, and description
+        const puzzles = {
+            1: [
+                {
+                    position: [
+                        'r...k..r',
+                        'pp.n.ppp',
+                        '..p.....',
+                        '.b.p....',
+                        '..B.....',
+                        '.....N..',
+                        'PPP..PPP',
+                        'R..QK..R'
+                    ],
+                    moves: [{ from: 'c4', to: 'f7' }],
+                    description: "Find the best move for White - Fork"
+                },
+                {
+                    position: [
+                        '........',
+                        '.....p.p',
+                        '........',
+                        '.....k.P',
+                        '....pK..',
+                        '.....P..',
+                        '........',
+                        '........'
+                    ],
+                    moves: [{ from: 'f3', to: 'e4' }],
+                    description: "Find the best move for White - Pawn capture"
+                }
+            ],
+            2: [
+                {
+                    position: [
+                        'r..qk..r',
+                        'ppp..ppp',
+                        '..n.p...',
+                        '....n...',
+                        '.bBP....',
+                        '.....N..',
+                        'PPP..PPP',
+                        'R..QK..R'
+                    ],
+                    moves: [{ from: 'c4', to: 'e6' }],
+                    description: "Find the best move for White - Pin"
+                },
+                {
+                    position: [
+                        'r.bqk..r',
+                        'ppp.ppbp',
+                        '..np.np.',
+                        '........',
+                        '..BPP...',
+                        '.PN..N..',
+                        'PP3.PPP',
+                        'R.BQK..R'
+                    ],
+                    moves: [{ from: 'c4', to: 'g8' }],
+                    description: "Find the best move for White - Diagonal attack"
+                }
+            ],
+            3: [
+                {
+                    position: [
+                        'r...k..r',
+                        'ppp.ppbp',
+                        '..n.....',
+                        '...pq...',
+                        '.b.P....',
+                        '.P...NP.',
+                        'P.Q.PP.P',
+                        'R.B.K..R'
+                    ],
+                    moves: [{ from: 'c2', to: 'c7' }],
+                    description: "Find the best move for White - Queen attack"
+                },
+                {
+                    position: [
+                        'r...kb.r',
+                        'ppp.pppp',
+                        '..n.....',
+                        '...p....',
+                        '.b.P...q',
+                        '.....N..',
+                        'PPP.BPPP',
+                        'RNBQ.RK.'
+                    ],
+                    moves: [{ from: 'e2', to: 'h5' }],
+                    description: "Find the checkmate in one move"
+                }
+            ],
+            4: [
+                {
+                    position: [
+                        'r.bqk..r',
+                        'pp.n.ppp',
+                        '..p.p...',
+                        '........',
+                        '.bBP....',
+                        '....BN..',
+                        'PPP..PPP',
+                        'R..QK..R'
+                    ],
+                    moves: [{ from: 'd1', to: 'd8' }, { from: 'd8', to: 'd7' }],
+                    description: "Find the queen sacrifice leading to checkmate"
+                },
+                {
+                    position: [
+                        'r...k..r',
+                        'ppp..ppp',
+                        '..n.q...',
+                        '...p....',
+                        '.b.n....',
+                        '.....N..',
+                        'PPPQ.PPP',
+                        'R.B.K..R'
+                    ],
+                    moves: [{ from: 'd2', to: 'd4' }, { from: 'd4', to: 'e5' }],
+                    description: "Find the knight fork with the queen"
+                }
+            ],
+            5: [
+                {
+                    position: [
+                        'r..qk..r',
+                        'ppp.bppp',
+                        '..np....',
+                        '...Np...',
+                        '..P.P...',
+                        '.P...N..',
+                        'P....PPP',
+                        'R.BQK..R'
+                    ],
+                    moves: [{ from: 'd5', to: 'c7' }, { from: 'c7', to: 'e8' }],
+                    description: "Find the knight sacrifice leading to checkmate"
+                },
+                {
+                    position: [
+                        'r.b.k..r',
+                        'ppp..ppp',
+                        '..n.p...',
+                        '...qP...',
+                        '..BP....',
+                        'P....N..',
+                        '.PP..PPP',
+                        'R..QK..R'
+                    ],
+                    moves: [{ from: 'c4', to: 'f7' }, { from: 'f7', to: 'e8' }],
+                    description: "Find the winning combination"
+                }
+            ]
+        };
+
+        // Convert algebraic notation (e.g., "e4") to board coordinates [row, col]
+        function algebraicToCoords(algebraic) {
+            const col = algebraic.charCodeAt(0) - 'a'.charCodeAt(0);
+            const row = 8 - parseInt(algebraic[1]);
+            return [row, col];
+        }
+
+        // Convert board coordinates [row, col] to algebraic notation
+        function coordsToAlgebraic(row, col) {
+            const file = String.fromCharCode('a'.charCodeAt(0) + col);
+            const rank = 8 - row;
+            return file + rank;
+        }
+
+        // Initialize the chessboard
+        function initializeBoard() {
+            const chessboard = document.getElementById('chessboard');
+            chessboard.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    square.classList.add((row + col) % 2 === 0 ? 'white' : 'black');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    square.addEventListener('click', handleSquareClick);
+                    
+                    chessboard.appendChild(square);
+                }
+            }
+        }
+
+        // Load a puzzle onto the board
+        function loadPuzzle(puzzle) {
+            currentPuzzle = puzzle;
+            board = [];
+            validMoves = [];
+            selectedSquare = null;
+            puzzleAttempts = 0;
+            
+            // Clear any messages
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            
+            // Update puzzle info
+            document.getElementById('puzzle-title').textContent = `Puzzle #${Math.floor(Math.random() * 1000)}`;
+            document.getElementById('puzzle-description').textContent = puzzle.description;
+            
+            // Parse the position
+            for (let i = 0; i < 8; i++) {
+                board[i] = [];
+                for (let j = 0; j < 8; j++) {
+                    board[i][j] = puzzle.position[i][j] || '.';
+                }
+            }
+            
+            // Update the UI
+            updateBoard();
+        }
+
+        // Update the visual board based on the current board state
+        function updateBoard() {
+            const squares = document.querySelectorAll('.square');
+            
+            squares.forEach(square => {
+                const row = parseInt(square.dataset.row);
+                const col = parseInt(square.dataset.col);
+                
+                // Remove any previous classes
+                square.classList.remove('selected');
+                square.classList.remove('valid-move');
+                
+                // Set the piece
+                square.textContent = pieces[board[row][col]] || '';
+                
+                // Mark selected square
+                if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
+                    square.classList.add('selected');
+                }
+                
+                // Mark valid moves
+                if (validMoves.some(move => move.row === row && move.col === col)) {
+                    square.classList.add('valid-move');
+                }
+            });
+        }
+
+        // Handle square click events
+        function handleSquareClick(event) {
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+            
+            // If no square is selected and the clicked square has a piece, select it
+            if (!selectedSquare && board[row][col] !== '.') {
+                // Only allow white pieces to be selected (uppercase)
+                if (board[row][col] === board[row][col].toUpperCase()) {
+                    selectedSquare = { row, col };
+                    
+                    // For simplicity, we'll just show the correct moves as valid moves
+                    validMoves = [];
+                    
+                    const algebraic = coordsToAlgebraic(row, col);
+                    currentPuzzle.moves.forEach(move => {
+                        if (move.from === algebraic) {
+                            const [moveRow, moveCol] = algebraicToCoords(move.to);
+                            validMoves.push({ row: moveRow, col: moveCol });
+                        }
+                    });
+                    
+                    updateBoard();
+                }
+            } 
+            // If a square is selected and a valid move square is clicked, make the move
+            else if (selectedSquare) {
+                const isValidMove = validMoves.some(move => move.row === row && move.col === col);
+                
+                if (isValidMove) {
+                    // Make the move
+                    const fromAlgebraic = coordsToAlgebraic(selectedSquare.row, selectedSquare.col);
+                    const toAlgebraic = coordsToAlgebraic(row, col);
+                    
+                    // Check if this is a correct move
+                    const correctMove = currentPuzzle.moves.find(move => 
+                        move.from === fromAlgebraic && move.to === toAlgebraic
+                    );
+                    
+                    if (correctMove) {
+                        // Move the piece
+                        board[row][col] = board[selectedSquare.row][selectedSquare.col];
+                        board[selectedSquare.row][selectedSquare.col] = '.';
+                        
+                        // Remove the move from currentPuzzle.moves (for multi-move solutions)
+                        const moveIndex = currentPuzzle.moves.indexOf(correctMove);
+                        currentPuzzle.moves.splice(moveIndex, 1);
+                        
+                        // Check if the puzzle is solved
+                        if (currentPuzzle.moves.length === 0) {
+                            // Puzzle solved!
+                            currentScore += currentDifficulty * 10;
+                            currentStreak++;
+                            
+                            // Show success message
+                            const message = document.getElementById('message');
+                            message.textContent = 'Correct! Well done!';
+                            message.className = 'message success';
+                            
+                            // Update stats
+                            document.getElementById('score').textContent = currentScore;
+                            document.getElementById('streak').textContent = currentStreak;
+                            
+                            // Increase difficulty if streak is good
+                            if (currentStreak % 3 === 0 && currentDifficulty < 5) {
+                                currentDifficulty++;
+                                document.getElementById('difficulty-level').textContent = currentDifficulty;
+                            }
+                        } else {
+                            // Still more moves to make for this puzzle
+                            selectedSquare = null;
+                            validMoves = [];
+                            updateBoard();
+                        }
+                    } else {
+                        // Incorrect move
+                        puzzleAttempts++;
+                        currentStreak = 0;
+                        
+                        // Show error message
+                        const message = document.getElementById('message');
+                        message.textContent = 'Incorrect move. Try again!';
+                        message.className = 'message error';
+                        
+                        // Update streak
+                        document.getElementById('streak').textContent = currentStreak;
+                        
+                        // Decrease difficulty if too many wrong attempts
+                        if (puzzleAttempts >= 3 && currentDifficulty > 1) {
+                            currentDifficulty--;
+                            document.getElementById('difficulty-level').textContent = currentDifficulty;
+                        }
+                    }
+                }
+                
+                // Deselect the square
+                selectedSquare = null;
+                validMoves = [];
+                updateBoard();
+            }
+        }
+
+        // Get a random puzzle of the current difficulty
+        function getRandomPuzzle() {
+            const puzzlesOfDifficulty = puzzles[currentDifficulty];
+            const randomIndex = Math.floor(Math.random() * puzzlesOfDifficulty.length);
+            
+            // Deep clone the puzzle to avoid modifying the original
+            const puzzle = JSON.parse(JSON.stringify(puzzlesOfDifficulty[randomIndex]));
+            return puzzle;
+        }
+
+        // Initialize the game
+        function init() {
+            initializeBoard();
+            
+            // Set up button handlers
+            document.getElementById('new-puzzle').addEventListener('click', () => {
+                loadPuzzle(getRandomPuzzle());
+            });
+            
+            document.getElementById('hint').addEventListener('click', () => {
+                if (currentPuzzle && currentPuzzle.moves.length > 0) {
+                    const move = currentPuzzle.moves[0];
+                    const [row, col] = algebraicToCoords(move.from);
+                    
+                    // Highlight the piece to move
+                    selectedSquare = { row, col };
+                    validMoves = [];
+                    updateBoard();
+                    
+                    // Reduce score slightly for using a hint
+                    currentScore = Math.max(0, currentScore - 5);
+                    document.getElementById('score').textContent = currentScore;
+                }
+            });
+            
+            document.getElementById('solution').addEventListener('click', () => {
+                if (currentPuzzle && currentPuzzle.moves.length > 0) {
+                    // Show the solution as a message
+                    const moves = currentPuzzle.moves.map(move => `${move.from} → ${move.to}`).join(', ');
+                    
+                    const message = document.getElementById('message');
+                    message.textContent = `Solution: ${moves}`;
+                    message.className = 'message';
+                    
+                    // Clear the selection
+                    selectedSquare = null;
+                    validMoves = [];
+                    updateBoard();
+                    
+                    // Reduce score for showing solution
+                    currentScore = Math.max(0, currentScore - 10);
+                    currentStreak = 0;
+                    document.getElementById('score').textContent = currentScore;
+                    document.getElementById('streak').textContent = currentStreak;
+                }
+            });
+            
+            // Load initial puzzle
+            loadPuzzle(getRandomPuzzle());
+        }
+        
+        // Start the game when page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
