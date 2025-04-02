@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Tic-Tac-Toe</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            overflow-x: hidden; /* Nodig voor confetti om niet horizontaal te scrollen */
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .status-bar {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            aspect-ratio: 1/1;
+            max-width: 600px;
+            position: relative;
+        }
+        
+        .big-cell {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            background-color: #333;
+            position: relative;
+        }
+        
+        .small-cell {
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+            aspect-ratio: 1/1;
+            transition: background-color 0.3s;
+            min-height: 30px;
+            position: relative;
+        }
+        
+        .small-cell:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .big-cell.active {
+            background-color: #4CAF50;
+        }
+        
+        .big-cell.inactive {
+            opacity: 0.7;
+        }
+        
+        .big-cell.won-x {
+            background-color: rgba(255, 99, 71, 0.3);
+        }
+        
+        .big-cell.won-o {
+            background-color: rgba(65, 105, 225, 0.3);
+        }
+        
+        .small-cell.x {
+            color: tomato;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        
+        .small-cell.o {
+            color: royalblue;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        
+        .big-cell.won-x::after,
+        .big-cell.won-o::after {
+            content: attr(data-winner);
+            position: absolute;
+            font-size: 60px;
+            opacity: 0.3;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .rules {
+            margin-top: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .rules h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        
+        .rules-toggle {
+            background-color: #333;
+        }
+        
+        /* Winnende lijn op het grote bord - nu zwart ipv geel */
+        .winning-line {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        /* Horizontale lijnen */
+        .winning-line.horizontal {
+            height: 10px;
+            width: 100%;
+            left: 0;
+        }
+        
+        .winning-line.horizontal.row-0 {
+            top: calc(16.7%);
+        }
+        
+        .winning-line.horizontal.row-1 {
+            top: calc(50%);
+        }
+        
+        .winning-line.horizontal.row-2 {
+            top: calc(83.3%);
+        }
+        
+        /* Verticale lijnen */
+        .winning-line.vertical {
+            width: 10px;
+            height: 100%;
+            top: 0;
+        }
+        
+        .winning-line.vertical.col-0 {
+            left: calc(16.7%);
+        }
+        
+        .winning-line.vertical.col-1 {
+            left: calc(50%);
+        }
+        
+        .winning-line.vertical.col-2 {
+            left: calc(83.3%);
+        }
+        
+        /* Diagonale lijnen */
+        .winning-line.diagonal {
+            height: 10px;
+            width: 140%;
+            left: -20%;
+            top: calc(50% - 5px);
+        }
+        
+        .winning-line.diagonal.top-left {
+            transform: rotate(45deg);
+        }
+        
+        .winning-line.diagonal.top-right {
+            transform: rotate(-45deg);
+        }
+        
+        /* Verwijder de win-line class voor kleine cellen, die willen we niet meer gebruiken */
+        .small-cell.win-line {
+            background-color: transparent;
+        }
+        
+        /* Laatste zet markering */
+        .small-cell.last-move {
+            box-shadow: inset 0 0 0 3px gold;
+        }
+
+        /* Dropdown menu styling */
+        .variant-select {
+            margin-bottom: 20px;
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .variant-select select {
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: white;
+            font-size: 16px;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .variant-select select:hover {
+            border-color: #4CAF50;
+        }
+        
+        /* Modal dialog voor waarschuwingen */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .modal h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-buttons button {
+            padding: 8px 15px;
+        }
+        
+        .modal-buttons .cancel-btn {
+            background-color: #f44336;
+        }
+        
+        .modal-buttons .cancel-btn:hover {
+            background-color: #d32f2f;
+        }
+        
+        /* Canvas voor confetti */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
+        }
+    </style>
+    <!-- Confetti JS bibliotheek -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <h1>Ultimate Tic-Tac-Toe</h1>
+    
+    <!-- Variant selectie dropdown -->
+    <div class="variant-select">
+        <label for="game-variant">Game variant:</label>
+        <select id="game-variant">
+            <option value="standard">Standard (Classic rules)</option>
+            <option value="continue-won">Continue in won boards</option>
+            <option value="tic-tac-ku">Tic-Tac-Ku (Win 5 small boards)</option>
+            <option value="random-start">Random starting moves</option>
+        </select>
+    </div>
+    
+    <div class="status-bar" id="status">Player X's turn</div>
+    
+    <div class="game-board" id="game-board"></div>
+    
+    <div class="controls">
+        <button id="reset-btn">Reset Game</button>
+        <button id="rules-btn" class="rules-toggle">Show Rules</button>
+    </div>
+    
+    <div class="rules" id="rules" style="display: none;">
+        <h2>Rules of Ultimate Tic-Tac-Toe</h2>
+        <p>Ultimate tic-tac-toe is played on a 3×3 grid of 3×3 tic-tac-toe boards.</p>
+        <ul>
+            <li>The first player can place their mark anywhere on any board.</li>
+            <li>The next move must be played in the board corresponding to the position of the previous move. For example, if a player plays in the top-right cell of a small board, the next player must play in the top-right big board.</li>
+            <li>If a player is sent to a board that is already won or filled completely, they may play in any open cell on any board.</li>
+            <li>Win a small board by getting three marks in a row (horizontally, vertically, or diagonally).</li>
+            <li>Win the game by winning three small boards in a row (horizontally, vertically, or diagonally).</li>
+            <li>If all boards are filled without a winner, the game is a draw.</li>
+        </ul>
+        
+        <h3>Game Variants</h3>
+        <ul>
+            <li><strong>Standard:</strong> Classic Ultimate Tic-Tac-Toe rules.</li>
+            <li><strong>Continue in won boards:</strong> Players can continue to play in already won boards if there are still empty spaces.</li>
+            <li><strong>Tic-Tac-Ku:</strong> Instead of winning by getting three small boards in a row, players win by capturing at least 5 small boards.</li>
+            <li><strong>Random starting moves:</strong> The first 4 moves are randomly generated to prevent forced-win strategies.</li>
+        </ul>
+    </div>
+    
+    <!-- Modal voor bevestiging van variant switch -->
+    <div id="variant-modal" class="modal">
+        <div class="modal-content">
+            <h3>Change Game Variant?</h3>
+            <p>Changing the game variant will reset the current game. Are you sure you want to continue?</p>
+            <div class="modal-buttons">
+                <button id="confirm-variant-change" class="confirm-btn">Yes, Change Variant</button>
+                <button id="cancel-variant-change" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Wait for DOM to be fully loaded
+        window.onload = function() {
+            const gameBoard = document.getElementById('game-board');
+            const statusBar = document.getElementById('status');
+            const resetBtn = document.getElementById('reset-btn');
+            const rulesBtn = document.getElementById('rules-btn');
+            const rulesDiv = document.getElementById('rules');
+            const variantSelect = document.getElementById('game-variant');
+            const variantModal = document.getElementById('variant-modal');
+            const confirmVariantBtn = document.getElementById('confirm-variant-change');
+            const cancelVariantBtn = document.getElementById('cancel-variant-change');
+            
+            let currentPlayer = 'X';
+            let nextBigCellIndex = null; // null means player can choose any big cell
+            let gameOver = false;
+            let lastBigIndex = null;
+            let lastSmallIndex = null;
+            let winningLine = null;
+            let moveCount = 0;
+            let currentVariant = 'standard';
+            let pendingVariant = null;
+            
+            // State of big cells (overall 3x3 grid)
+            const bigCellsState = Array(9).fill(null);
+            
+            // State of all small cells (9 boards of 3x3 = 81 cells)
+            const smallCellsState = Array(9).fill().map(() => Array(9).fill(null));
+            
+            // State for winning small boards
+            const smallBoardWinLines = Array(9).fill(null);
+            
+            // Confetti functies
+            function showBigConfetti() {
+                const duration = 5 * 1000;
+                const animationEnd = Date.now() + duration;
+                const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
+
+                function randomInRange(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+
+                const interval = setInterval(function() {
+                    const timeLeft = animationEnd - Date.now();
+
+                    if (timeLeft <= 0) {
+                        return clearInterval(interval);
+                    }
+
+                    const particleCount = 50 * (timeLeft / duration);
+                    
+                    // Gebruik verschillende kleuren voor X en O
+                    let colors;
+                    if (currentPlayer === 'X') {
+                        colors = ['#ff6347', '#ff8066', '#ff9985']; // Rood tinten voor X
+                    } else {
+                        colors = ['#4169e1', '#6384e6', '#859fec']; // Blauw tinten voor O
+                    }
+                    
+                    // Groot confetti van beide kanten
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+                        colors: colors
+                    });
+                    
+                    confetti({
+                        ...defaults,
+                        particleCount,
+                        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+                        colors: colors
+                    });
+                }, 250);
+            }
+            
+            function showSmallConfetti(cellX, cellY) {
+                const rect = gameBoard.getBoundingClientRect();
+                const totalSize = rect.width;
+                const cellSize = totalSize / 3;
+                
+                // Bereken de positie van het middelpunt van de cell
+                const x = (cellX * cellSize + cellSize / 2) / window.innerWidth;
+                const y = (rect.top + cellY * cellSize + cellSize / 2) / window.innerHeight;
+                
+                // Bepaal kleuren op basis van de speler
+                let colors;
+                if (currentPlayer === 'X') {
+                    colors = ['#ff6347', '#ff8066', '#ff9985']; // Rood tinten voor X
+                } else {
+                    colors = ['#4169e1', '#6384e6', '#859fec']; // Blauw tinten voor O
+                }
+                
+                // Toon een kleine hoeveelheid confetti
+                confetti({
+                    particleCount: 30,
+                    spread: 70,
+                    origin: { x, y },
+                    colors: colors,
+                    ticks: 50,
+                    disableForReducedMotion: true
+                });
+            }
+            
+            // Functie om te controleren of het spel is begonnen
+            function isGameStarted() {
+                // Controleer of er al zetten zijn gedaan
+                return moveCount > 0;
+            }
+            
+            // Functie voor het maken van willekeurige zetten (random-start variant)
+            function makeRandomMoves() {
+                // Maak de eerste 4 zetten willekeurig
+                for (let i = 0; i < 4; i++) {
+                    // Vind een willekeurig leeg vakje
+                    let validMove = false;
+                    let bigIndex, smallIndex;
+                    
+                    while (!validMove) {
+                        if (nextBigCellIndex === null) {
+                            // Willekeurig groot bord kiezen
+                            bigIndex = Math.floor(Math.random() * 9);
+                        } else {
+                            bigIndex = nextBigCellIndex;
+                        }
+                        
+                        // Als het grote bord al gewonnen is, kies een ander
+                        if (bigCellsState[bigIndex] !== null) {
+                            nextBigCellIndex = null;
+                            continue;
+                        }
+                        
+                        // Willekeurig klein vakje kiezen
+                        smallIndex = Math.floor(Math.random() * 9);
+                        
+                        // Controleer of het vakje leeg is
+                        if (smallCellsState[bigIndex][smallIndex] === null) {
+                            validMove = true;
+                        }
+                    }
+                    
+                    // Maak de zet
+                    lastBigIndex = bigIndex;
+                    lastSmallIndex = smallIndex;
+                    smallCellsState[bigIndex][smallIndex] = currentPlayer;
+                    moveCount++;
+                    
+                    // Controleer of de zet het kleine bord heeft gewonnen
+                    const smallBoardWinResult = checkWinSmallBoard(bigIndex);
+                    if (smallBoardWinResult.win) {
+                        bigCellsState[bigIndex] = currentPlayer;
+                        smallBoardWinLines[bigIndex] = smallBoardWinResult.line;
+                    } else if (isBoardFull(smallCellsState[bigIndex])) {
+                        bigCellsState[bigIndex] = 'draw';
+                    }
+                    
+                    // Bepaal het volgende grote bord
+                    nextBigCellIndex = smallIndex;
+                    if (bigCellsState[nextBigCellIndex] !== null || isBoardFull(smallCellsState[nextBigCellIndex])) {
+                        nextBigCellIndex = null;
+                    }
+                    
+                    // Wissel speler
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                }
+                
+                // Update status
+                if (nextBigCellIndex === null) {
+                    statusBar.textContent = `Player ${currentPlayer}'s turn - Play in any board`;
+                } else {
+                    statusBar.textContent = `Player ${currentPlayer}'s turn - Play in highlighted board`;
+                }
+                
+                createBoard();
+            }
+            
+            // Create the game board
+            function createBoard() {
+                gameBoard.innerHTML = '';
+                
+                // Verwijder bestaande winningslijnen
+                const existingLines = document.querySelectorAll('.winning-line');
+                existingLines.forEach(line => line.remove());
+                
+                for (let i = 0; i < 9; i++) {
+                    const bigCell = document.createElement('div');
+                    bigCell.classList.add('big-cell');
+                    bigCell.dataset.index = i;
+                    
+                    // If this big cell can be played in
+                    if ((nextBigCellIndex === null || nextBigCellIndex === i) && !bigCellsState[i]) {
+                        bigCell.classList.add('active');
+                    } else {
+                        bigCell.classList.add('inactive');
+                    }
+                    
+                    // If this big cell is already won
+                    if (bigCellsState[i] === 'X') {
+                        bigCell.classList.add('won-x');
+                        bigCell.dataset.winner = 'X';
+                    } else if (bigCellsState[i] === 'O') {
+                        bigCell.classList.add('won-o');
+                        bigCell.dataset.winner = 'O';
+                    }
+                    
+                    // Create 9 small cells inside each big cell
+                    for (let j = 0; j < 9; j++) {
+                        const smallCell = document.createElement('div');
+                        smallCell.classList.add('small-cell');
+                        smallCell.dataset.bigIndex = i;
+                        smallCell.dataset.smallIndex = j;
+                        
+                        // Display X or O if already played
+                        if (smallCellsState[i][j] === 'X') {
+                            smallCell.textContent = 'X';
+                            smallCell.classList.add('x');
+                        } else if (smallCellsState[i][j] === 'O') {
+                            smallCell.textContent = 'O';
+                            smallCell.classList.add('o');
+                        }
+                        
+                        // Markeer de laatste zet
+                        if (lastBigIndex === i && lastSmallIndex === j) {
+                            smallCell.classList.add('last-move');
+                        }
+                        
+                        // Add click event
+                        smallCell.addEventListener('click', handleCellClick);
+                        
+                        bigCell.appendChild(smallCell);
+                    }
+                    
+                    gameBoard.appendChild(bigCell);
+                }
+                
+                // Voeg winnende lijn toe als er een winnaar is op het grote bord
+                if (winningLine) {
+                    drawWinningLine(winningLine.type, winningLine.index);
+                }
+            }
+            
+            // Teken winnende lijn
+            function drawWinningLine(type, index) {
+                const line = document.createElement('div');
+                line.classList.add('winning-line');
+                
+                if (type === 'row') {
+                    line.classList.add('horizontal', `row-${index}`);
+                } else if (type === 'col') {
+                    line.classList.add('vertical', `col-${index}`);
+                } else if (type === 'diag1') {
+                    line.classList.add('diagonal', 'top-left');
+                } else if (type === 'diag2') {
+                    line.classList.add('diagonal', 'top-right');
+                }
+                
+                gameBoard.appendChild(line);
+            }
+            
+            // Handle small cell click
+            function handleCellClick(e) {
+                if (gameOver) return;
+                
+                const bigIndex = parseInt(e.target.dataset.bigIndex);
+                const smallIndex = parseInt(e.target.dataset.smallIndex);
+                
+                // Check if this move is valid
+                if (smallCellsState[bigIndex][smallIndex] !== null) return; // Already played
+                
+                // In continue-won variant, we can play in won boards as long as the cell is empty
+                if (currentVariant !== 'continue-won') {
+                    if (bigCellsState[bigIndex] !== null) return; // Big cell already won in standard rules
+                }
+                
+                if (nextBigCellIndex !== null && nextBigCellIndex !== bigIndex) return; // Not the correct big cell
+                
+                // Bewaar de laatste zet
+                lastBigIndex = bigIndex;
+                lastSmallIndex = smallIndex;
+                
+                // Make the move
+                smallCellsState[bigIndex][smallIndex] = currentPlayer;
+                moveCount++;
+                
+                // Check if the move won the small board
+                const smallBoardWinResult = checkWinSmallBoard(bigIndex);
+                if (smallBoardWinResult.win) {
+                    // In continue-won variant, we only mark the board as won, but still allow playing in it
+                    if (currentVariant !== 'continue-won' || bigCellsState[bigIndex] === null) {
+                        bigCellsState[bigIndex] = currentPlayer;
+                    }
+                    
+                    // Toon klein confetti voor het winnen van een klein bord
+                    const cellX = bigIndex % 3;
+                    const cellY = Math.floor(bigIndex / 3);
+                    showSmallConfetti(cellX, cellY);
+                    
+                    // Check if the game is won
+                    const bigBoardWinResult = checkWinBigBoard();
+                    if (bigBoardWinResult.win) {
+                        statusBar.textContent = `Player ${currentPlayer} wins the game!`;
+                        winningLine = bigBoardWinResult.winningLine;
+                        gameOver = true;
+                        
+                        // Redraw board to show the winning state
+                        createBoard();
+                        
+                        // Toon groot confetti voor het winnen van het spel
+                        setTimeout(showBigConfetti, 300);
+                        
+                        return;
+                    }
+                } else if (isBoardFull(smallCellsState[bigIndex])) {
+                    // Mark as draw if all cells filled
+                    bigCellsState[bigIndex] = 'draw';
+                }
+                
+                // Determine next big cell based on current small cell
+                nextBigCellIndex = smallIndex;
+                
+                // If the next big cell is already won or full, allow playing anywhere
+                // In continue-won variant, we only check if the board is full
+                if (currentVariant === 'continue-won') {
+                    if (isBoardFull(smallCellsState[nextBigCellIndex])) {
+                        nextBigCellIndex = null;
+                    }
+                } else {
+                    if (bigCellsState[nextBigCellIndex] !== null || isBoardFull(smallCellsState[nextBigCellIndex])) {
+                        nextBigCellIndex = null;
+                    }
+                }
+                
+                // Check if the game is a draw
+                if (isGameDraw()) {
+                    statusBar.textContent = "Game ended in a draw!";
+                    gameOver = true;
+                    
+                    // Redraw board to show final state
+                    createBoard();
+                    return;
+                }
+                
+                // Switch player
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                
+                // Update status
+                if (nextBigCellIndex === null) {
+                    statusBar.textContent = `Player ${currentPlayer}'s turn - Play in any board`;
+                } else {
+                    statusBar.textContent = `Player ${currentPlayer}'s turn - Play in highlighted board`;
+                }
+                
+                // Redraw the board
+                createBoard();
+            }
+            
+            // Check if a small board is won
+            function checkWinSmallBoard(bigIndex) {
+                const board = smallCellsState[bigIndex];
+                const lines = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                    [0, 4, 8], [2, 4, 6]             // Diagonals
+                ];
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const [a, b, c] = lines[i];
+                    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                        return {
+                            win: true,
+                            line: lines[i]
+                        };
+                    }
+                }
+                
+                return { win: false };
+            }
+            
+            // Check if the big board is won, with different rules based on the variant
+            function checkWinBigBoard() {
+                // Voor de Tic-Tac-Ku variant, win je door 5 kleine borden te claimen
+                if (currentVariant === 'tic-tac-ku') {
+                    // Tel het aantal borden dat elke speler heeft gewonnen
+                    let xWins = 0;
+                    let oWins = 0;
+                    
+                    for (let i = 0; i < 9; i++) {
+                        if (bigCellsState[i] === 'X') xWins++;
+                        if (bigCellsState[i] === 'O') oWins++;
+                    }
+                    
+                    // Als een speler 5 of meer borden heeft, wint die speler
+                    if (xWins >= 5) {
+                        return {
+                            win: true,
+                            winningLine: { type: 'none', index: 0 } // Geen lijn nodig voor Tic-Tac-Ku
+                        };
+                    }
+                    
+                    if (oWins >= 5) {
+                        return {
+                            win: true,
+                            winningLine: { type: 'none', index: 0 } // Geen lijn nodig voor Tic-Tac-Ku
+                        };
+                    }
+                    
+                    return { win: false };
+                }
+                
+                // Voor alle andere varianten, standaard 3-op-een-rij regels
+                const winPatterns = [
+                    { indices: [0, 1, 2], type: 'row', index: 0 },    // Top row
+                    { indices: [3, 4, 5], type: 'row', index: 1 },    // Middle row
+                    { indices: [6, 7, 8], type: 'row', index: 2 },    // Bottom row
+                    { indices: [0, 3, 6], type: 'col', index: 0 },    // Left column
+                    { indices: [1, 4, 7], type: 'col', index: 1 },    // Middle column
+                    { indices: [2, 5, 8], type: 'col', index: 2 },    // Right column
+                    { indices: [0, 4, 8], type: 'diag1', index: 0 },  // Diagonal from top left
+                    { indices: [2, 4, 6], type: 'diag2', index: 0 }   // Diagonal from top right
+                ];
+                
+                for (const pattern of winPatterns) {
+                    const [a, b, c] = pattern.indices;
+                    if (bigCellsState[a] && 
+                        bigCellsState[a] !== 'draw' &&
+                        bigCellsState[a] === bigCellsState[b] && 
+                        bigCellsState[a] === bigCellsState[c]) {
+                        return {
+                            win: true,
+                            winningLine: {
+                                type: pattern.type,
+                                index: pattern.index
+                            }
+                        };
+                    }
+                }
+                
+                return { win: false };
+            }
+            
+            // Check if a board is full
+            function isBoardFull(board) {
+                return board.every(cell => cell !== null);
+            }
+            
+            // Check if the game is a draw (all big cells won or full)
+            function isGameDraw() {
+                // In Tic-Tac-Ku, het spel eindigt in gelijkspel als alle kleine borden zijn gevuld
+                // zonder dat iemand 5 kleine borden heeft gewonnen
+                if (currentVariant === 'tic-tac-ku') {
+                    // Controleer of alle kleine borden vol zijn
+                    const allFull = smallCellsState.every(board => isBoardFull(board));
+                    
+                    if (allFull) {
+                        // Tel het aantal borden dat elke speler heeft gewonnen
+                        let xWins = 0;
+                        let oWins = 0;
+                        
+                        for (let i = 0; i < 9; i++) {
+                            if (bigCellsState[i] === 'X') xWins++;
+                            if (bigCellsState[i] === 'O') oWins++;
+                        }
+                        
+                        // Als geen van beide spelers 5 borden heeft, is het gelijkspel
+                        return xWins < 5 && oWins < 5;
+                    }
+                    
+                    return false;
+                }
+                
+                // Voor standaard variant
+                if (currentVariant === 'continue-won') {
+                    // Bij continue-won is het alleen gelijkspel als alle kleine cellen gevuld zijn
+                    return smallCellsState.every(board => isBoardFull(board));
+                } else {
+                    // Bij standaard regels is het gelijkspel als alle borden gewonnen zijn of vol
+                    return bigCellsState.every((state, index) => 
+                        state !== null || isBoardFull(smallCellsState[index])
+                    );
+                }
+            }
+            
+            // Reset het spel met de huidige variant
+            function resetGame() {
+                currentPlayer = 'X';
+                nextBigCellIndex = null;
+                gameOver = false;
+                lastBigIndex = null;
+                lastSmallIndex = null;
+                winningLine = null;
+                moveCount = 0;
+                
+                // Reset states
+                for (let i = 0; i < 9; i++) {
+                    bigCellsState[i] = null;
+                    smallCellsState[i] = Array(9).fill(null);
+                    smallBoardWinLines[i] = null;
+                }
+                
+                statusBar.textContent = "Player X's turn";
+                
+                // Als random-start variant is geselecteerd, maak 4 willekeurige zetten
+                if (currentVariant === 'random-start') {
+                    makeRandomMoves();
+                } else {
+                    createBoard();
+                }
+            }
+            
+            // Verander de spelregelvariant
+            function changeVariant(newVariant) {
+                currentVariant = newVariant;
+                variantSelect.value = newVariant;
+                resetGame();
+            }
+            
+            // Toggle rules display
+            function toggleRules() {
+                if (rulesDiv.style.display === 'none') {
+                    rulesDiv.style.display = 'block';
+                    rulesBtn.textContent = 'Hide Rules';
+                } else {
+                    rulesDiv.style.display = 'none';
+                    rulesBtn.textContent = 'Show Rules';
+                }
+            }
+            
+            // Open de modal voor variant wijziging
+            function openVariantModal(variant) {
+                pendingVariant = variant;
+                variantModal.style.display = 'block';
+            }
+            
+            // Sluit de modal
+            function closeVariantModal() {
+                variantModal.style.display = 'none';
+                pendingVariant = null;
+                variantSelect.value = currentVariant; // Reset dropdown naar huidige variant
+            }
+            
+            // Event listener voor variant selectie
+            variantSelect.addEventListener('change', function() {
+                const newVariant = this.value;
+                
+                // Als het spel nog niet is begonnen, verander direct van variant
+                if (!isGameStarted()) {
+                    changeVariant(newVariant);
+                } else {
+                    // Anders, vraag bevestiging
+                    openVariantModal(newVariant);
+                }
+            });
+            
+            // Event listeners voor de modal
+            confirmVariantBtn.addEventListener('click', function() {
+                if (pendingVariant) {
+                    changeVariant(pendingVariant);
+                }
+                closeVariantModal();
+            });
+            
+            cancelVariantBtn.addEventListener('click', closeVariantModal);
+            
+            // Event listeners
+            resetBtn.addEventListener('click', resetGame);
+            rulesBtn.addEventListener('click', toggleRules);
+            
+            // Initialiseer het spel
+            createBoard();
+            
+            // Log to console to verify the board was created
+            console.log('Game board initialized with variant:', currentVariant);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vibe Code Projects</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .projects-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .project-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .project-image {
+            width: 100%;
+            height: 160px;
+            background-color: #ddd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            color: #999;
+        }
+        
+        .project-info {
+            padding: 15px;
+        }
+        
+        .project-title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .project-description {
+            margin-top: 8px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Vibe Code Projects</h1>
+    
+    <div class="projects-container" id="projects-container">
+        <!-- Project cards will be dynamically generated -->
+    </div>
+
+    <script>
+        // Project data - add new projects here
+        const projects = [
+            {
+                title: "Ultimate Tic-Tac-Toe",
+                description: "A strategic variant of the classic Tic-Tac-Toe game with multiple game modes.",
+                image: "🎮",
+                file: "projects/ultimate-tic-tac-toe.html"
+            }
+            // Add more projects here as they're created
+            // Example:
+            // {
+            //     title: "Project Name",
+            //     description: "Short description of the project",
+            //     image: "🚀", // You can use an emoji or an actual image path
+            //     file: "projects/project-file.html"
+            // }
+        ];
+        
+        // Function to generate project cards
+        function generateProjectCards() {
+            const container = document.getElementById('projects-container');
+            
+            projects.forEach(project => {
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.addEventListener('click', () => {
+                    window.location.href = project.file;
+                });
+                
+                // Check if image is an emoji or a file path
+                let imageContent;
+                if (project.image.startsWith('http') || project.image.includes('.')) {
+                    // It's a file path or URL
+                    imageContent = `<img src="${project.image}" alt="${project.title}" style="max-width: 100%; max-height: 100%;">`;
+                } else {
+                    // It's probably an emoji or text
+                    imageContent = project.image;
+                }
+                
+                card.innerHTML = `
+                    <div class="project-image">${imageContent}</div>
+                    <div class="project-info">
+                        <h3 class="project-title">${project.title}</h3>
+                        <p class="project-description">${project.description}</p>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        // Initialize the page
+        window.onload = function() {
+            generateProjectCards();
+        };
+    </script>
+</body>
+</html>
