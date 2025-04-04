@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Meal Planner</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: #333;
+        }
+        
+        h1, h2, h3 {
+            color: #444;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-bottom: 2px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .week-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .day-card {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .day-title {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+            text-align: center;
+            color: #555;
+        }
+        
+        .meal-selector {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .randomize-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        
+        .meal-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        
+        .meal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .meal-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .meal-form, .category-form, .ingredient-form {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        
+        .ingredients-container {
+            margin-top: 10px;
+        }
+        
+        .ingredient-row {
+            display: flex;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+        
+        .ingredient-row select, .ingredient-row input {
+            margin-right: 10px;
+        }
+        
+        .ingredient-row button {
+            background-color: #f44336;
+            padding: 5px 10px;
+        }
+        
+        .add-ingredient-btn {
+            margin-top: 10px;
+            background-color: #2196F3;
+        }
+        
+        .shopping-list {
+            margin-top: 20px;
+        }
+        
+        .category-group {
+            margin-bottom: 20px;
+        }
+        
+        .category-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .delete-btn {
+            background-color: #f44336;
+        }
+        
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <h1>Weekly Meal Planner</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="meal-plan">Weekly Plan</div>
+        <div class="tab" data-tab="meal-list">Meal List</div>
+        <div class="tab" data-tab="shopping-list">Shopping List</div>
+        <div class="tab" data-tab="manage-categories">Manage Categories</div>
+    </div>
+    
+    <div class="tab-content active" id="meal-plan">
+        <div class="container">
+            <h2>This Week's Dinner Plan</h2>
+            <div class="week-grid" id="week-grid">
+                <!-- Day cards will be dynamically generated -->
+            </div>
+            <button class="randomize-btn" id="randomize-btn">Randomly Plan My Week</button>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="meal-list">
+        <div class="container">
+            <h2>All Meals</h2>
+            <div class="meal-form">
+                <h3>Add New Meal</h3>
+                <div class="form-group">
+                    <label for="meal-name">Meal Name:</label>
+                    <input type="text" id="meal-name" placeholder="Enter meal name">
+                </div>
+                <div class="form-group">
+                    <label for="meal-description">Description (optional):</label>
+                    <textarea id="meal-description" placeholder="Enter meal description or notes"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Ingredients:</label>
+                    <div class="ingredients-container" id="ingredients-container">
+                        <!-- Ingredient rows will be added here -->
+                    </div>
+                    <button class="add-ingredient-btn" id="add-ingredient-btn">Add Ingredient</button>
+                </div>
+                <button id="add-meal-btn">Add Meal</button>
+            </div>
+            
+            <div class="meal-list" id="meals-container">
+                <!-- Meals will be listed here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="shopping-list">
+        <div class="container">
+            <h2>Shopping List for the Week</h2>
+            <div class="shopping-list" id="shopping-list-container">
+                <!-- Shopping list will be generated here -->
+            </div>
+            <button id="print-shopping-list">Print Shopping List</button>
+        </div>
+    </div>
+    
+    <div class="tab-content" id="manage-categories">
+        <div class="container">
+            <h2>Manage Ingredient Categories</h2>
+            <div class="category-form">
+                <h3>Add New Category</h3>
+                <div class="form-group">
+                    <label for="category-name">Category Name:</label>
+                    <input type="text" id="category-name" placeholder="Enter category name">
+                </div>
+                <button id="add-category-btn">Add Category</button>
+            </div>
+            
+            <div id="categories-list">
+                <!-- Categories will be listed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data structure
+        let meals = [];
+        let categories = [];
+        let weeklyPlan = {
+            Monday: { type: 'meal', mealId: null },
+            Tuesday: { type: 'meal', mealId: null },
+            Wednesday: { type: 'meal', mealId: null },
+            Thursday: { type: 'meal', mealId: null },
+            Friday: { type: 'meal', mealId: null },
+            Saturday: { type: 'meal', mealId: null },
+            Sunday: { type: 'meal', mealId: null }
+        };
+        
+        // Load data from localStorage
+        function loadData() {
+            if (localStorage.getItem('mealPlannerMeals')) {
+                meals = JSON.parse(localStorage.getItem('mealPlannerMeals'));
+            }
+            
+            if (localStorage.getItem('mealPlannerCategories')) {
+                categories = JSON.parse(localStorage.getItem('mealPlannerCategories'));
+            } else {
+                // Initialize with some default categories
+                categories = [
+                    { id: 1, name: 'Fruits & Vegetables' },
+                    { id: 2, name: 'Meat & Fish' },
+                    { id: 3, name: 'Dairy & Eggs' },
+                    { id: 4, name: 'Grains & Pasta' },
+                    { id: 5, name: 'Canned Goods' },
+                    { id: 6, name: 'Spices & Condiments' },
+                    { id: 7, name: 'Other' }
+                ];
+                saveData();
+            }
+            
+            if (localStorage.getItem('mealPlannerWeeklyPlan')) {
+                weeklyPlan = JSON.parse(localStorage.getItem('mealPlannerWeeklyPlan'));
+            }
+        }
+        
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('mealPlannerMeals', JSON.stringify(meals));
+            localStorage.setItem('mealPlannerCategories', JSON.stringify(categories));
+            localStorage.setItem('mealPlannerWeeklyPlan', JSON.stringify(weeklyPlan));
+        }
+        
+        // Tab functionality
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and tab contents
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    tab.classList.add('active');
+                    const tabContentId = tab.getAttribute('data-tab');
+                    document.getElementById(tabContentId).classList.add('active');
+                });
+            });
+        }
+        
+        // Generate weekly plan grid
+        function generateWeekGrid() {
+            const weekGrid = document.getElementById('week-grid');
+            weekGrid.innerHTML = '';
+            
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            
+            days.forEach(day => {
+                const dayCard = document.createElement('div');
+                dayCard.className = 'day-card';
+                
+                const dayTitle = document.createElement('h3');
+                dayTitle.className = 'day-title';
+                dayTitle.textContent = day;
+                
+                const mealSelector = document.createElement('select');
+                mealSelector.className = 'meal-selector';
+                mealSelector.id = `${day.toLowerCase()}-selector`;
+                
+                // Add the "Other" option first
+                const otherOption = document.createElement('option');
+                otherOption.value = 'other';
+                otherOption.textContent = 'Other (Eating Out)';
+                mealSelector.appendChild(otherOption);
+                
+                // Add option for no selection
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '-- Select a meal --';
+                mealSelector.appendChild(emptyOption);
+                
+                // Add meal options
+                meals.forEach(meal => {
+                    const option = document.createElement('option');
+                    option.value = meal.id;
+                    option.textContent = meal.name;
+                    mealSelector.appendChild(option);
+                });
+                
+                // Set selected value based on weekly plan
+                if (weeklyPlan[day].type === 'other') {
+                    mealSelector.value = 'other';
+                } else if (weeklyPlan[day].mealId !== null) {
+                    mealSelector.value = weeklyPlan[day].mealId;
+                } else {
+                    mealSelector.value = '';
+                }
+                
+                // Add event listener for selection change
+                mealSelector.addEventListener('change', (e) => {
+                    if (e.target.value === 'other') {
+                        weeklyPlan[day] = { type: 'other', mealId: null };
+                    } else if (e.target.value === '') {
+                        weeklyPlan[day] = { type: 'meal', mealId: null };
+                    } else {
+                        weeklyPlan[day] = { type: 'meal', mealId: e.target.value };
+                    }
+                    saveData();
+                    generateShoppingList();
+                });
+                
+                dayCard.appendChild(dayTitle);
+                dayCard.appendChild(mealSelector);
+                weekGrid.appendChild(dayCard);
+            });
+        }
+        
+        // Generate meal list
+        function generateMealList() {
+            const mealsContainer = document.getElementById('meals-container');
+            mealsContainer.innerHTML = '';
+            
+            if (meals.length === 0) {
+                mealsContainer.innerHTML = '<p>No meals added yet. Add your first meal above!</p>';
+                return;
+            }
+            
+            meals.forEach(meal => {
+                const mealItem = document.createElement('div');
+                mealItem.className = 'meal-item';
+                
+                const mealInfo = document.createElement('div');
+                mealInfo.className = 'meal-info';
+                
+                const mealName = document.createElement('h3');
+                mealName.textContent = meal.name;
+                mealInfo.appendChild(mealName);
+                
+                if (meal.description) {
+                    const mealDesc = document.createElement('p');
+                    mealDesc.textContent = meal.description;
+                    mealInfo.appendChild(mealDesc);
+                }
+                
+                if (meal.ingredients && meal.ingredients.length > 0) {
+                    const ingredientsList = document.createElement('div');
+                    ingredientsList.className = 'ingredients-list';
+                    ingredientsList.innerHTML = '<strong>Ingredients:</strong> ';
+                    
+                    const ingredientTexts = meal.ingredients.map(ing => {
+                        const category = categories.find(cat => cat.id == ing.categoryId);
+                        return `${ing.name} (${category ? category.name : 'Uncategorized'})`;
+                    });
+                    
+                    ingredientsList.innerHTML += ingredientTexts.join(', ');
+                    mealInfo.appendChild(ingredientsList);
+                }
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.addEventListener('click', () => {
+                    deleteMeal(meal.id);
+                });
+                
+                mealItem.appendChild(mealInfo);
+                mealItem.appendChild(deleteBtn);
+                mealsContainer.appendChild(mealItem);
+            });
+        }
+        
+        // Delete meal
+        function deleteMeal(mealId) {
+            if (confirm('Are you sure you want to delete this meal?')) {
+                meals = meals.filter(meal => meal.id != mealId);
+                
+                // Also remove it from weekly plan if it's selected
+                for (const day in weeklyPlan) {
+                    if (weeklyPlan[day].mealId == mealId) {
+                        weeklyPlan[day].mealId = null;
+                    }
+                }
+                
+                saveData();
+                generateMealList();
+                generateWeekGrid();
+                generateShoppingList();
+            }
+        }
+        
+        // Add a new meal
+        function setupMealForm() {
+            const addMealBtn = document.getElementById('add-meal-btn');
+            const addIngredientBtn = document.getElementById('add-ingredient-btn');
+            const ingredientsContainer = document.getElementById('ingredients-container');
+            
+            // Add ingredient row
+            function addIngredientRow(ingredientData = null) {
+                const row = document.createElement('div');
+                row.className = 'ingredient-row';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.className = 'ingredient-name';
+                nameInput.placeholder = 'Ingredient name';
+                if (ingredientData) nameInput.value = ingredientData.name;
+                
+                const categorySelect = document.createElement('select');
+                categorySelect.className = 'ingredient-category';
+                
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    categorySelect.appendChild(option);
+                });
+                
+                if (ingredientData) categorySelect.value = ingredientData.categoryId;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'delete-btn';
+                removeBtn.textContent = 'Remove';
+                removeBtn.addEventListener('click', () => {
+                    row.remove();
+                });
+                
+                row.appendChild(nameInput);
+                row.appendChild(categorySelect);
+                row.appendChild(removeBtn);
+                
+                ingredientsContainer.appendChild(row);
+            }
+            
+            // Add ingredient button event
+            addIngredientBtn.addEventListener('click', () => {
+                addIngredientRow();
+            });
+            
+            // Add meal button event
+            addMealBtn.addEventListener('click', () => {
+                const nameInput = document.getElementById('meal-name');
+                const descInput = document.getElementById('meal-description');
+                
+                if (!nameInput.value.trim()) {
+                    alert('Please enter a meal name');
+                    return;
+                }
+                
+                // Collect ingredients
+                const ingredients = [];
+                const ingredientRows = document.querySelectorAll('.ingredient-row');
+                
+                ingredientRows.forEach(row => {
+                    const nameInput = row.querySelector('.ingredient-name');
+                    const categorySelect = row.querySelector('.ingredient-category');
+                    
+                    if (nameInput.value.trim()) {
+                        ingredients.push({
+                            name: nameInput.value.trim(),
+                            categoryId: categorySelect.value
+                        });
+                    }
+                });
+                
+                // Create new meal object
+                const newMeal = {
+                    id: Date.now().toString(),
+                    name: nameInput.value.trim(),
+                    description: descInput.value.trim(),
+                    ingredients: ingredients
+                };
+                
+                // Add to meals array
+                meals.push(newMeal);
+                saveData();
+                
+                // Clear form
+                nameInput.value = '';
+                descInput.value = '';
+                ingredientsContainer.innerHTML = '';
+                
+                // Refresh UI
+                generateMealList();
+                generateWeekGrid();
+            });
+            
+            // Add initial ingredient row
+            addIngredientRow();
+        }
+        
+        // Category management
+        function setupCategoryManagement() {
+            const addCategoryBtn = document.getElementById('add-category-btn');
+            const categoryInput = document.getElementById('category-name');
+            const categoriesList = document.getElementById('categories-list');
+            
+            function updateCategoriesList() {
+                categoriesList.innerHTML = '';
+                
+                if (categories.length === 0) {
+                    categoriesList.innerHTML = '<p>No categories defined yet.</p>';
+                    return;
+                }
+                
+                categories.forEach(category => {
+                    const categoryItem = document.createElement('div');
+                    categoryItem.className = 'meal-item';
+                    
+                    const categoryName = document.createElement('div');
+                    categoryName.textContent = category.name;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.addEventListener('click', () => {
+                        // Check if category is in use
+                        let inUse = false;
+                        meals.forEach(meal => {
+                            if (meal.ingredients && meal.ingredients.some(ing => ing.categoryId == category.id)) {
+                                inUse = true;
+                            }
+                        });
+                        
+                        if (inUse) {
+                            alert('This category is being used by ingredients in your meals. Please update those meals first.');
+                            return;
+                        }
+                        
+                        if (confirm('Are you sure you want to delete this category?')) {
+                            categories = categories.filter(cat => cat.id != category.id);
+                            saveData();
+                            updateCategoriesList();
+                        }
+                    });
+                    
+                    categoryItem.appendChild(categoryName);
+                    categoryItem.appendChild(deleteBtn);
+                    categoriesList.appendChild(categoryItem);
+                });
+            }
+            
+            addCategoryBtn.addEventListener('click', () => {
+                if (!categoryInput.value.trim()) {
+                    alert('Please enter a category name');
+                    return;
+                }
+                
+                // Create new category
+                const newCategory = {
+                    id: Date.now().toString(),
+                    name: categoryInput.value.trim()
+                };
+                
+                categories.push(newCategory);
+                saveData();
+                
+                // Clear input
+                categoryInput.value = '';
+                
+                // Update UI
+                updateCategoriesList();
+                setupMealForm(); // Refresh ingredients form to include new category
+            });
+            
+            // Initial display
+            updateCategoriesList();
+        }
+        
+        // Generate shopping list for the week
+        function generateShoppingList() {
+            const shoppingListContainer = document.getElementById('shopping-list-container');
+            shoppingListContainer.innerHTML = '';
+            
+            // Collect all ingredients needed for the week
+            const neededIngredients = [];
+            
+            for (const day in weeklyPlan) {
+                if (weeklyPlan[day].type === 'meal' && weeklyPlan[day].mealId) {
+                    const meal = meals.find(m => m.id == weeklyPlan[day].mealId);
+                    if (meal && meal.ingredients) {
+                        meal.ingredients.forEach(ingredient => {
+                            // Check if ingredient already in list
+                            const existingIng = neededIngredients.find(i => 
+                                i.name.toLowerCase() === ingredient.name.toLowerCase() && 
+                                i.categoryId == ingredient.categoryId);
+                            
+                            if (existingIng) {
+                                existingIng.count++; // Increment count if already in list
+                            } else {
+                                // Add new ingredient to list
+                                neededIngredients.push({
+                                    ...ingredient,
+                                    count: 1,
+                                    mealName: meal.name,
+                                    day: day
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            
+            if (neededIngredients.length === 0) {
+                shoppingListContainer.innerHTML = '<p>No ingredients needed for this week\'s plan.</p>';
+                return;
+            }
+            
+            // Group by category
+            const groupedIngredients = {};
+            
+            categories.forEach(category => {
+                groupedIngredients[category.id] = {
+                    name: category.name,
+                    ingredients: []
+                };
+            });
+            
+            neededIngredients.forEach(ingredient => {
+                if (groupedIngredients[ingredient.categoryId]) {
+                    groupedIngredients[ingredient.categoryId].ingredients.push(ingredient);
+                } else {
+                    // Handle case where category might have been deleted
+                    if (!groupedIngredients['uncategorized']) {
+                        groupedIngredients['uncategorized'] = {
+                            name: 'Uncategorized',
+                            ingredients: []
+                        };
+                    }
+                    groupedIngredients['uncategorized'].ingredients.push(ingredient);
+                }
+            });
+            
+            // Create shopping list HTML
+            for (const categoryId in groupedIngredients) {
+                const category = groupedIngredients[categoryId];
+                
+                if (category.ingredients.length === 0) continue;
+                
+                const categoryGroup = document.createElement('div');
+                categoryGroup.className = 'category-group';
+                
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'category-title';
+                categoryTitle.textContent = category.name;
+                categoryGroup.appendChild(categoryTitle);
+                
+                const ingredientsList = document.createElement('ul');
+                
+                category.ingredients.forEach(ingredient => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${ingredient.name} (${ingredient.count > 1 ? `${ingredient.count}x: ` : ''}${ingredient.mealName})`;
+                    ingredientsList.appendChild(listItem);
+                });
+                
+                categoryGroup.appendChild(ingredientsList);
+                shoppingListContainer.appendChild(categoryGroup);
+            }
+            
+            // Setup print button
+            const printBtn = document.getElementById('print-shopping-list');
+            printBtn.addEventListener('click', () => {
+                window.print();
+            });
+        }
+        
+        // Randomize weekly plan
+        function setupRandomize() {
+            const randomizeBtn = document.getElementById('randomize-btn');
+            
+            randomizeBtn.addEventListener('click', () => {
+                if (meals.length === 0) {
+                    alert('Please add some meals first before randomizing the plan');
+                    return;
+                }
+                
+                // Randomize each day that isn't set to "other"
+                for (const day in weeklyPlan) {
+                    if (weeklyPlan[day].type !== 'other') {
+                        // Pick a random meal
+                        const randomIndex = Math.floor(Math.random() * meals.length);
+                        weeklyPlan[day] = { type: 'meal', mealId: meals[randomIndex].id };
+                    }
+                }
+                
+                saveData();
+                generateWeekGrid();
+                generateShoppingList();
+            });
+        }
+        
+        // Initialize app
+        window.onload = function() {
+            loadData();
+            setupTabs();
+            generateWeekGrid();
+            generateMealList();
+            setupMealForm();
+            setupCategoryManagement();
+            generateShoppingList();
+            setupRandomize();
+        };
+    </script>
+</body>
+</html>
